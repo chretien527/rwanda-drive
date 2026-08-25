@@ -24,19 +24,12 @@ contract LicenseRegistry is PlatformAccessControl {
     mapping(bytes32 => bool) public isIssued; // leafHash => issued
     mapping(bytes32 => uint256) public leafIndexOf; // leafHash => index in tree
 
-    event LicenseIssued(
-        bytes32 indexed leafHash,
-        uint256 indexed leafIndex,
-        bytes32 newRoot
-    );
+    event LicenseIssued(bytes32 indexed leafHash, uint256 indexed leafIndex, bytes32 newRoot);
 
     error TreeFull();
     error AlreadyIssued();
 
-    constructor(
-        address _platformSigner,
-        address _guardian
-    ) PlatformAccessControl(_platformSigner, _guardian) {
+    constructor(address _platformSigner, address _guardian) PlatformAccessControl(_platformSigner, _guardian) {
         bytes32 currentZero = keccak256(abi.encodePacked(uint256(0)));
         for (uint8 i = 0; i < TREE_DEPTH; i++) {
             zeros[i] = currentZero;
@@ -50,9 +43,7 @@ contract LicenseRegistry is PlatformAccessControl {
     /// @param leafHash keccak256(licenceNumber, holderIdentityCommitment, category, issueDate, expiryDate)
     ///        — computed by the Go backend from the authoritative license record. Never contains
     ///        raw PII on-chain, only the hash.
-    function issueLicense(
-        bytes32 leafHash
-    ) external onlyPlatform returns (uint256 leafIndex) {
+    function issueLicense(bytes32 leafHash) external onlyPlatform returns (uint256 leafIndex) {
         if (nextLeafIndex >= 2 ** TREE_DEPTH) revert TreeFull();
         if (isIssued[leafHash]) revert AlreadyIssued();
 
@@ -63,13 +54,9 @@ contract LicenseRegistry is PlatformAccessControl {
         for (uint8 i = 0; i < TREE_DEPTH; i++) {
             if (currentIndex % 2 == 0) {
                 filledSubtrees[i] = currentHash;
-                currentHash = keccak256(
-                    abi.encodePacked(currentHash, zeros[i])
-                );
+                currentHash = keccak256(abi.encodePacked(currentHash, zeros[i]));
             } else {
-                currentHash = keccak256(
-                    abi.encodePacked(filledSubtrees[i], currentHash)
-                );
+                currentHash = keccak256(abi.encodePacked(filledSubtrees[i], currentHash));
             }
             currentIndex /= 2;
         }
@@ -88,23 +75,19 @@ contract LicenseRegistry is PlatformAccessControl {
     ///         cached root — both are valid, this is provided for
     ///         convenience and for offline-capable clients that sync
     ///         `root` periodically.
-    function verifyInclusion(
-        bytes32 leafHash,
-        bytes32[TREE_DEPTH] calldata proofSiblings,
-        uint256 leafIndex
-    ) external view returns (bool) {
+    function verifyInclusion(bytes32 leafHash, bytes32[TREE_DEPTH] calldata proofSiblings, uint256 leafIndex)
+        external
+        view
+        returns (bool)
+    {
         bytes32 computedHash = leafHash;
         uint256 currentIndex = leafIndex;
 
         for (uint8 i = 0; i < TREE_DEPTH; i++) {
             if (currentIndex % 2 == 0) {
-                computedHash = keccak256(
-                    abi.encodePacked(computedHash, proofSiblings[i])
-                );
+                computedHash = keccak256(abi.encodePacked(computedHash, proofSiblings[i]));
             } else {
-                computedHash = keccak256(
-                    abi.encodePacked(proofSiblings[i], computedHash)
-                );
+                computedHash = keccak256(abi.encodePacked(proofSiblings[i], computedHash));
             }
             currentIndex /= 2;
         }

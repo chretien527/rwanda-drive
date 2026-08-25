@@ -25,23 +25,14 @@ contract Deploy is Script {
 
         vm.startBroadcast();
 
-        LicenseRegistry licenseRegistry = new LicenseRegistry(
-            platformSigner,
-            guardian
-        );
-        CredentialRegistry credentialRegistry = new CredentialRegistry(
-            platformSigner,
-            guardian
-        );
+        LicenseRegistry licenseRegistry = new LicenseRegistry(platformSigner, guardian);
+        CredentialRegistry credentialRegistry = new CredentialRegistry(platformSigner, guardian);
         AuditAnchor auditAnchor = new AuditAnchor(platformSigner, guardian);
 
         vm.stopBroadcast();
 
         console.log("LicenseRegistry deployed at:", address(licenseRegistry));
-        console.log(
-            "CredentialRegistry deployed at:",
-            address(credentialRegistry)
-        );
+        console.log("CredentialRegistry deployed at:", address(credentialRegistry));
         console.log("AuditAnchor deployed at:", address(auditAnchor));
     }
 }

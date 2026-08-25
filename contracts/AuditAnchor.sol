@@ -18,13 +18,23 @@ contract AuditAnchor is PlatformAccessControl {
     mapping(uint256 => uint256) public batchTimestamp; // batchId => block.timestamp when anchored
     uint256 public latestBatchId;
 
-    event BatchAnchored(uint256 indexed batchId, bytes32 merkleRoot, uint256 timestamp);
+    event BatchAnchored(
+        uint256 indexed batchId,
+        bytes32 merkleRoot,
+        uint256 timestamp
+    );
 
     error BatchAlreadyAnchored();
 
-    constructor(address _platformSigner, address _guardian) PlatformAccessControl(_platformSigner, _guardian) {}
+    constructor(
+        address _platformSigner,
+        address _guardian
+    ) PlatformAccessControl(_platformSigner, _guardian) {}
 
-    function anchorBatch(uint256 batchId, bytes32 merkleRoot) external onlyPlatform {
+    function anchorBatch(
+        uint256 batchId,
+        bytes32 merkleRoot
+    ) external onlyPlatform {
         if (batchRoots[batchId] != bytes32(0)) revert BatchAlreadyAnchored();
 
         batchRoots[batchId] = merkleRoot;
@@ -37,19 +47,24 @@ contract AuditAnchor is PlatformAccessControl {
     /// @notice Verify that `leaf` was included in the batch anchored as `batchId`,
     ///         given a standard Merkle proof. Depth is not fixed here since batch
     ///         sizes vary — the proof array length determines depth.
-    function verifyBatchLeaf(uint256 batchId, bytes32 leaf, bytes32[] calldata proof, uint256 leafIndex)
-        external
-        view
-        returns (bool)
-    {
+    function verifyBatchLeaf(
+        uint256 batchId,
+        bytes32 leaf,
+        bytes32[] calldata proof,
+        uint256 leafIndex
+    ) external view returns (bool) {
         bytes32 computedHash = leaf;
         uint256 currentIndex = leafIndex;
 
         for (uint256 i = 0; i < proof.length; i++) {
             if (currentIndex % 2 == 0) {
-                computedHash = keccak256(abi.encodePacked(computedHash, proof[i]));
+                computedHash = keccak256(
+                    abi.encodePacked(computedHash, proof[i])
+                );
             } else {
-                computedHash = keccak256(abi.encodePacked(proof[i], computedHash));
+                computedHash = keccak256(
+                    abi.encodePacked(proof[i], computedHash)
+                );
             }
             currentIndex /= 2;
         }

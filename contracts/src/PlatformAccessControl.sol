@@ -20,10 +20,7 @@ abstract contract PlatformAccessControl {
     address public platformSigner;
     address public immutable GUARDIAN;
 
-    event PlatformSignerUpdated(
-        address indexed oldSigner,
-        address indexed newSigner
-    );
+    event PlatformSignerUpdated(address indexed oldSigner, address indexed newSigner);
 
     error NotPlatform();
     error NotGuardian();
@@ -48,8 +45,9 @@ abstract contract PlatformAccessControl {
     }
 
     constructor(address _platformSigner, address _guardian) {
-        if (_platformSigner == address(0) || _guardian == address(0))
+        if (_platformSigner == address(0) || _guardian == address(0)) {
             revert ZeroAddress();
+        }
         platformSigner = _platformSigner;
         GUARDIAN = _guardian;
         emit PlatformSignerUpdated(address(0), _platformSigner);

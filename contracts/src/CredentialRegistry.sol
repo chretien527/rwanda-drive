@@ -23,34 +23,21 @@ contract CredentialRegistry is PlatformAccessControl {
     mapping(bytes32 => Status) public status; // credentialHash => status
     mapping(bytes32 => uint256) public lastUpdated; // credentialHash => timestamp
 
-    event StatusChanged(
-        bytes32 indexed credentialHash,
-        Status oldStatus,
-        Status newStatus,
-        uint256 timestamp
-    );
+    event StatusChanged(bytes32 indexed credentialHash, Status oldStatus, Status newStatus, uint256 timestamp);
 
-    constructor(
-        address _platformSigner,
-        address _guardian
-    ) PlatformAccessControl(_platformSigner, _guardian) {}
+    constructor(address _platformSigner, address _guardian) PlatformAccessControl(_platformSigner, _guardian) {}
 
     /// @param credentialHash keccak256 identifier of the QR credential (not the license leaf hash —
     ///        these are distinct: a license can be validly issued in LicenseRegistry while its
     ///        associated credential is separately revoked here, e.g. "report compromised credential").
-    function setStatus(
-        bytes32 credentialHash,
-        Status newStatus
-    ) external onlyPlatform {
+    function setStatus(bytes32 credentialHash, Status newStatus) external onlyPlatform {
         Status old = status[credentialHash];
         status[credentialHash] = newStatus;
         lastUpdated[credentialHash] = block.timestamp;
         emit StatusChanged(credentialHash, old, newStatus, block.timestamp);
     }
 
-    function checkStatus(
-        bytes32 credentialHash
-    ) external view returns (Status) {
+    function checkStatus(bytes32 credentialHash) external view returns (Status) {
         return status[credentialHash];
     }
 
