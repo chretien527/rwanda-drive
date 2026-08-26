@@ -14,6 +14,7 @@ import (
 	"github.com/0xEmmyb2/CipherPass/internal/config"
 	"github.com/0xEmmyb2/CipherPass/internal/qrcredentials"
 	"github.com/0xEmmyb2/CipherPass/internal/server"
+	"github.com/0xEmmyb2/CipherPass/internal/vehicle"
 	"github.com/0xEmmyb2/CipherPass/pkg/database"
 )
 
@@ -60,8 +61,13 @@ func main() {
 	authHandler := auth.NewAuthHandler(authService, inviteService, authMiddleware, logger)
 	authHandler.RegisterRoutes(srv.Router)
 
-	qrHandler := qrcredentials.NewQRHandler(qrService, authMiddleware, logger)
+	qrHandler := qrcredentials.NewQRHandler(qrService, chainService, authMiddleware, logger)
 	qrHandler.RegisterRoutes(srv.Router)
+
+	vehicleService := vehicle.NewVehicleService(db, logger)
+	vehicleHandler := vehicle.NewHandler(vehicleService, logger)
+	vehicleHandler.RegisterRoutes(srv.Router, authMiddleware)
+	logger.Info("Vehicle endpoints registered")
 
 	if chainService != nil {
 		chainHandler := chain.NewHandler(chainService, logger)

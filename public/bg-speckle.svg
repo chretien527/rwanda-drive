@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200" viewBox="0 0 800 1200">
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .dot { fill: #0e1e38; }
+    </style>
+  </defs>
+  
+  <!-- Crisp Pure White Base -->
+  <rect width="800" height="1200" class="bg" />
+
+  <!-- Organic ink speckle / terrazzo particle pattern matching user reference -->
+  <g class="dot" opacity="0.85">
+    <!-- Large prominent specks -->
+    <circle cx="120" cy="180" r="4.2" />
+    <ellipse cx="340" cy="95" rx="3.8" ry="4.5" transform="rotate(25 340 95)" />
+    <circle cx="580" cy="220" r="4.0" />
+    <circle cx="420" cy="380" r="5.0" />
+    <circle cx="150" cy="480" r="4.5" />
+    <ellipse cx="690" cy="510" rx="3.5" ry="4.8" transform="rotate(-15 690 510)" />
+    <circle cx="280" cy="620" r="4.6" />
+    <circle cx="680" cy="710" r="5.2" />
+    <circle cx="410" cy="740" r="4.3" />
+    <ellipse cx="120" cy="810" rx="4.0" ry="4.9" transform="rotate(35 120 810)" />
+    <circle cx="760" cy="760" r="4.8" />
+    <circle cx="490" cy="1040" r="4.6" />
+    <circle cx="230" cy="1110" r="4.2" />
+    <circle cx="590" cy="960" r="4.7" />
+    <ellipse cx="40" cy="1070" rx="3.9" ry="4.6" />
+    <circle cx="710" cy="320" r="4.4" />
+    <circle cx="50" cy="350" r="4.3" />
+    <circle cx="250" cy="40" r="4.2" />
+    <circle cx="490" cy="40" r="3.9" />
+    <circle cx="650" cy="80" r="4.4" />
+
+    <!-- Medium organic droplets -->
+    <circle cx="45" cy="120" r="2.8" />
+    <ellipse cx="230" cy="140" rx="2.5" ry="3.2" transform="rotate(40 230 140)" />
+    <circle cx="490" cy="180" r="3.0" />
+    <circle cx="720" cy="160" r="2.7" />
+    <ellipse cx="80" cy="260" rx="2.9" ry="2.2" />
+    <circle cx="310" cy="290" r="3.2" />
+    <circle cx="560" cy="310" r="2.9" />
+    <ellipse cx="220" cy="380" rx="2.8" ry="3.5" transform="rotate(-20 220 380)" />
+    <circle cx="460" cy="460" r="3.1" />
+    <circle cx="610" cy="470" r="2.6" />
+    <ellipse cx="360" cy="530" rx="3.3" ry="2.5" />
+    <circle cx="110" cy="590" r="2.9" />
+    <circle cx="520" cy="620" r="3.2" />
+    <ellipse cx="740" cy="640" rx="2.4" ry="3.3" transform="rotate(45 740 640)" />
+    <circle cx="220" cy="700" r="3.0" />
+    <circle cx="330" cy="780" r="3.1" />
+    <ellipse cx="580" cy="800" rx="2.9" ry="2.3" />
+    <circle cx="60" cy="870" r="2.8" />
+    <circle cx="470" cy="890" r="3.3" />
+    <circle cx="670" cy="910" r="2.9" />
+    <ellipse cx="160" cy="980" rx="2.6" ry="3.4" transform="rotate(-30 160 980)" />
+    <circle cx="390" cy="1000" r="3.0" />
+    <circle cx="640" cy="1060" r="2.8" />
+    <ellipse cx="300" cy="1160" rx="3.1" ry="2.4" />
+    <circle cx="540" cy="1150" r="3.0" />
+    <circle cx="730" cy="1180" r="2.7" />
+
+    <!-- Fine splatter micro-dots -->
+    <circle cx="15" cy="40" r="1.4" />
+    <circle cx="170" cy="70" r="1.6" />
+    <circle cx="380" cy="50" r="1.5" />
+    <circle cx="540" cy="60" r="1.8" />
+    <circle cx="760" cy="90" r="1.5" />
+    <circle cx="110" cy="110" r="1.3" />
+    <circle cx="280" cy="120" r="1.7" />
+    <circle cx="430" cy="130" r="1.4" />
+    <circle cx="660" cy="140" r="1.6" />
+    <circle cx="90" cy="200" r="1.8" />
+    <circle cx="210" cy="220" r="1.5" />
+    <circle cx="370" cy="240" r="1.3" />
+    <circle cx="490" cy="250" r="1.7" />
+    <circle cx="640" cy="270" r="1.5" />
+    <circle cx="770" cy="280" r="1.4" />
+    <circle cx="30" cy="300" r="1.6" />
+    <circle cx="160" cy="320" r="1.8" />
+    <circle cx="270" cy="350" r="1.4" />
+    <circle cx="450" cy="360" r="1.5" />
+    <circle cx="630" cy="380" r="1.7" />
+    <circle cx="780" cy="410" r="1.5" />
+    <circle cx="80" cy="430" r="1.6" />
+    <circle cx="200" cy="450" r="1.4" />
+    <circle cx="340" cy="470" r="1.8" />
+    <circle cx="530" cy="490" r="1.5" />
+    <circle cx="680" cy="490" r="1.3" />
+    <circle cx="50" cy="540" r="1.7" />
+    <circle cx="180" cy="560" r="1.5" />
+    <circle cx="290" cy="570" r="1.4" />
+    <circle cx="440" cy="590" r="1.8" />
+    <circle cx="620" cy="610" r="1.5" />
+    <circle cx="760" cy="620" r="1.4" />
+    <circle cx="40" cy="660" r="1.6" />
+    <circle cx="160" cy="680" r="1.5" />
+    <circle cx="350" cy="690" r="1.7" />
+    <circle cx="470" cy="710" r="1.3" />
+    <circle cx="610" cy="730" r="1.6" />
+    <circle cx="770" cy="750" r="1.4" />
+    <circle cx="90" cy="770" r="1.8" />
+    <circle cx="250" cy="790" r="1.5" />
+    <circle cx="390" cy="820" r="1.4" />
+    <circle cx="520" cy="840" r="1.7" />
+    <circle cx="690" cy="850" r="1.5" />
+    <circle cx="30" cy="890" r="1.4" />
+    <circle cx="180" cy="910" r="1.6" />
+    <circle cx="310" cy="930" r="1.5" />
+    <circle cx="430" cy="950" r="1.7" />
+    <circle cx="570" cy="970" r="1.4" />
+    <circle cx="750" cy="980" r="1.6" />
+    <circle cx="80" cy="1010" r="1.5" />
+    <circle cx="230" cy="1030" r="1.7" />
+    <circle cx="340" cy="1050" r="1.4" />
+    <circle cx="510" cy="1070" r="1.8" />
+    <circle cx="670" cy="1090" r="1.5" />
+    <circle cx="780" cy="1110" r="1.3" />
+    <circle cx="120" cy="1140" r="1.6" />
+    <circle cx="270" cy="1150" r="1.5" />
+    <circle cx="420" cy="1170" r="1.4" />
+    <circle cx="600" cy="1190" r="1.7" />
+    <circle cx="760" cy="1200" r="1.5" />
+  </g>
+</svg>

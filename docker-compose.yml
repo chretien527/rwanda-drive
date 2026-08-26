@@ -12,7 +12,7 @@ services:
     volumes:
       - .:/app
       - go-cache:/root/.cache/go-build
-    command: go run ./cmd/api
+md/api/d
 
   postgres:
     image: postgres:15-alpine

@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-outfit), system-ui, sans-serif;
+}
+
+:root {
+  --font-outfit: 'Outfit', system-ui, sans-serif;
+  --primary-navy: #1e3a5f;
+  --primary-navy-dark: #142842;
+  --primary-navy-light: #2d4f7c;
+  --accent-white: #ffffff;
+  --bg-slate-light: #f8fafc;
+  --border-subtle: #e2e8f0;
+}
+
+body, html {
+  font-family: var(--font-outfit), system-ui, sans-serif;
+}
+
+/* User-provided Background Image (image.png) */
+.bg-landing-pattern {
+  background-color: #ffffff;
+  background-image: url('/image.png');
+  background-repeat: repeat;
+  background-size: 600px auto;
+  background-attachment: fixed;
+}
+
+.bg-speckle-pattern {
+  background-color: #ffffff;
+  background-image: url('/image.png');
+  background-repeat: repeat;
+  background-size: 600px auto;
+  background-attachment: fixed;
+}
+
+/* Dark Navy Pattern for Cards and Headers */
+.navy-hero-pattern {
+  background: linear-gradient(145deg, #0e1e38 0%, #0a1628 100%);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* 3D Floating MacBook Swing Animation */
+@keyframes swing-macbook {
+  0%, 100% {
+    transform: perspective(1200px) rotateY(-12deg) rotateX(7deg) rotateZ(-2deg) translateY(0px);
+  }
+  50% {
+    transform: perspective(1200px) rotateY(-17deg) rotateX(11deg) rotateZ(-3deg) translateY(-14px);
+  }
+}
+
+.macbook-swing {
+  animation: swing-macbook 6s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+/* Crisp 2-color holographic sheen */
+.hologram-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.hologram-card::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.05) 35%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.05) 65%,
+    transparent 80%
+  );
+  transform: rotate(30deg);
+  pointer-events: none;
+  animation: holoShimmer 7s infinite linear;
+}
+
+@keyframes holoShimmer {
+  0% { transform: translateY(-100%) rotate(25deg); }
+  100% { transform: translateY(100%) rotate(25deg); }
+}
+
+/* Pulse animation for active scanning */
+@keyframes radarSweep {
+  0% { transform: translateY(0%); opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { transform: translateY(220px); opacity: 0.2; }
+}
+
+.scanner-laser {
+  animation: radarSweep 2.2s infinite ease-in-out;
+}
+
+/* Custom smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0e1e38;
+}

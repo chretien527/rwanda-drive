@@ -1,25 +1,30 @@
 package qrcredentials
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 
 	"github.com/0xEmmyb2/CipherPass/internal/auth"
 	"github.com/0xEmmyb2/CipherPass/internal/config"
 	"github.com/gorilla/mux"
+	"github.com/0xEmmyb2/CipherPass/backend/internal/chain"
+	"github.com/google/uuid"
 )
 
 // QRHandler handles HTTP requests for QR credential operations
 type QRHandler struct {
 	service        *QRCredentialService
+	chainService   *chain.Service
 	authMiddleware *auth.Middleware
 	logger         config.LoggerInterface
 }
 
 // NewQRHandler creates a new QR credential handler
-func NewQRHandler(service *QRCredentialService, authMiddleware *auth.Middleware, logger config.LoggerInterface) *QRHandler {
+func NewQRHandler(service *QRCredentialService, chainService *chain.Service, authMiddleware *auth.Middleware, logger config.LoggerInterface) *QRHandler {
 	return &QRHandler{
 		service:        service,
+		chainService:   chainService,
 		authMiddleware: authMiddleware,
 		logger:         logger,
 	}
@@ -94,18 +99,59 @@ func (h *QRHandler) HandleVerificationScan(w http.ResponseWriter, r *http.Reques
 		"purpose":       req.Purpose,
 	}).Info("QR verification successful")
 
-	// TODO: Based on purpose, return selective disclosure of vehicle/driver data
-	// TODO: Check on-chain revocation status via chain service
-	// TODO: Audit log entry for scan attempt
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	// Initialize response data
+	response := map[string]interface{}{
 		"verified":     true,
 		"credential_id": token.CredentialID,
 		"purpose":      req.Purpose,
 		"verified_at":  token.IssuedAt,
 		"message":      "QR credential verified successfully",
-	})
+	}
+
+	// If this is a license verification request and chain service is available, generate ZK proof
+	if req.Purpose == "licence" && h.chainService != nil {
+		// Convert credentialID string to UUID
+		credentialUUID, err := uuid.Parse(token.CredentialID)
+		if err != nil {
+			h.logger.WithError(err).Warn("Failed to parse credential ID as UUID")
+			// Continue without proof - don't fail the entire verification
+		} else {
+			// Generate ZK proof for license verification
+			// For requiredCategory, we'll use a default of 2 (car) - in a real implementation,
+			// this would come from the license data or be configurable
+			requiredCategory := int64(2)
+			currentTimestamp := time.Now().Unix()
+
+			proof, publicWitness, err := h.chainService.GenerateLicenseVerificationProof(
+				r.Context(),
+				credentialUUID,
+				requiredCategory,
+				currentTimestamp,
+			)
+			if err != nil {
+				h.logger.WithError(err).Warn("Failed to generate license verification proof")
+				// Continue without proof - don't fail the entire verification
+			} else {
+				// Encode proof and public witness for transmission
+				proofBytes, err := proof.MarshalBinary()
+				if err != nil {
+					h.logger.WithError(err).Warn("Failed to marshal proof")
+				} else {
+					publicWitnessBytes, err := publicWitness.MarshalBinary()
+					if err != nil {
+						h.logger.WithError(err).Warn("Failed to marshal public witness")
+					} else {
+						response["proof"] = base64.StdEncoding.EncodeToString(proofBytes)
+						response["public_witness"] = base64.StdEncoding.EncodeToString(publicWitnessBytes)
+						response["proof_generated"] = true
+					}
+				}
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 func writeError(w http.ResponseWriter, status int, message, code string) {

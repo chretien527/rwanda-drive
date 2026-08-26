@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -39,6 +41,7 @@ func (h *Handler) RegisterRoutes(r *mux.Router, authMiddleware *auth.Middleware)
 	adminRouter.HandleFunc("/shadow-tree/root", h.HandleGetShadowTreeRoot).Methods("GET")
 	adminRouter.HandleFunc("/chain/sync-status", h.HandleGetSyncStatus).Methods("GET")
 	adminRouter.HandleFunc("/chain/credential-status/{credential_hash}", h.HandleCheckCredentialStatus).Methods("GET")
+	adminRouter.HandleFunc("/contracts/{name}/abi", h.HandleGetContractABI).Methods("GET")
 }
 
 // --- Request/Response types ---
@@ -364,6 +367,39 @@ func (h *Handler) HandleCheckCredentialStatus(w http.ResponseWriter, r *http.Req
 		Status:         statusName,
 		StatusCode:     uint8(status),
 	})
+}
+
+// HandleGetContractABI returns the ABI for a given contract name.
+// This enables the frontend to interact with smart contracts.
+func (h *Handler) HandleGetContractABI(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	contractName := vars["name"]
+	if contractName == "" {
+		writeError(w, http.StatusBadRequest, "contract name is required", "BAD_REQUEST")
+		return
+	}
+
+	// Construct path to contract ABI file
+	// The ABI is stored in contracts/out/{ContractName}.sol/{ContractName}.json
+	abiPath := filepath.Join("contracts", "out", contractName+".sol", contractName+".json")
+
+	// Read the ABI file
+	abiData, err := os.ReadFile(abiPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			writeError(w, http.StatusNotFound, "contract ABI not found: "+contractName, "CONTRACT_NOT_FOUND")
+		} else {
+			writeError(w, http.StatusInternalServerError, "failed to read contract ABI: "+err.Error(), "ABI_READ_ERROR")
+		}
+		return
+	}
+
+	// Set response headers
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=3600") // Cache for 1 hour
+
+	// Return the ABI data
+	w.Write(abiData)
 }
 
 // writeError sends a JSON error response.

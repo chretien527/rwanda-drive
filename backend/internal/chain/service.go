@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"fmt"
 	"math/big"
@@ -9,7 +10,17 @@ import (
 	"github.com/0xEmmyb2/CipherPass/internal/config"
 	"github.com/0xEmmyb2/CipherPass/pkg/bindings"
 	"github.com/0xEmmyb2/CipherPass/pkg/database"
+	"github.com/consensys/gnark-crypto/ecc"
+	gcmimc "github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
+	"github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/backend/witness"
+	"github.com/consensys/gnark/constraint"
+	"github.com/consensys/gnark/frontend"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/google/uuid"
+	"github.com/cipherpass/zk/circuits/licenseproof"
+	"github.com/cipherpass/zk/gadgets/merkle"
+	"github.com/cipherpass/zk/prover"
 )
 
 // Service provides high-level blockchain operations.
@@ -433,4 +444,160 @@ func (s *Service) GetLicenseLeafByKeccak(ctx context.Context, leafHash [32]byte)
 		return nil, err
 	}
 	return &leaf, nil
+}
+
+// GetLicenseLeafByUserID looks up a license leaf by user ID.
+func (s *Service) GetLicenseLeafByUserID(ctx context.Context, userID UUID) (*LicenseLeaf, error) {
+	var leaf LicenseLeaf
+	err := s.db.QueryRowContext(ctx,
+		`SELECT id, user_id, licence_number, keccak256_leaf, miMC_leaf, leaf_index, on_chain_root, issued_at, synced_at
+		 FROM license_leaves WHERE user_id = $1`,
+		userID,
+	).Scan(
+		&leaf.ID, &leaf.UserID, &leaf.LicenceNumber,
+		&leaf.Keccak256Leaf, &leaf.MiMCLeaf, &leaf.LeafIndex, &leaf.OnChainRoot,
+		&leaf.IssuedAt, &leaf.SyncedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &leaf, nil
+}
+
+// getHolderIdentityCommitment returns the holder identity commitment for a user.
+// This is a zero-knowledge friendly commitment to the user's identity data.
+func (s *Service) getHolderIdentityCommitment(userID UUID) (string, error) {
+	// TODO: Replace with actual implementation that retrieves or computes
+	// the holder identity commitment from verified user data (biometrics, documents)
+	// For now, return a deterministic placeholder based on userID
+	hash := sha256.Sum256(append([]byte("holder-identity-commitment:"), userID[:]...))
+	return fmt.Sprintf("%x", hash), nil
+}
+
+// getLicenseCategory returns the license category for a user.
+// This represents the type/class of license (e.g., 1=motorcycle, 2=car, 3=truck).
+func (s *Service) getLicenseCategory(userID UUID) (int64, error) {
+	// TODO: Replace with actual implementation that retrieves the license category
+	// from user data or license records
+	// For now, return a default category (e.g., 2 for car)
+	return 2, nil
+}
+
+// calculateExpiryDate calculates the expiry date based on the issued date.
+// Assumes a fixed validity period (e.g., 5 years).
+func (s *Service) calculateExpiryDate(issuedAt time.Time) (int64, error) {
+	// TODO: Replace with actual validity period logic (may depend on license category, jurisdiction, etc.)
+	// For now, assume 5 years validity
+	validityPeriod := 5 * 365 * 24 * 60 * 60 // 5 years in seconds
+	return issuedAt.Unix() + validityPeriod, nil
+}
+
+// GenerateLicenseVerificationProof generates a ZK proof proving that a user's license
+// is valid and meets the specified requirements, without revealing the underlying license data.
+// This is used when a driver presents their QR code for license verification.
+func (s *Service) GenerateLicenseVerificationProof(ctx context.Context, userID UUID, requiredCategory int64, currentTimestamp int64) (*groth16.Proof, witness.Witness, error) {
+	// 1. Get the license leaf for the user
+	leaf, err := s.GetLicenseLeafByUserID(ctx, userID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get license leaf for user %s: %w", userID, err)
+	}
+
+	// 2. Get the holder identity commitment
+	holderIdentityCommitmentStr, err := s.getHolderIdentityCommitment(userID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get holder identity commitment: %w", err)
+	}
+	// Convert hex string to int64 (assuming it fits in int64 for simplicity)
+	// In a real implementation, this would be a proper byte array conversion
+	holderIdentityCommitment := new(big.Int).SetBytes(common.FromHex(holderIdentityCommitmentStr)).Int64()
+
+	// 3. Get the license category
+	category, err := s.getLicenseCategory(userID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get license category: %w", err)
+	}
+
+	// 4. Calculate the expiry date
+	expiryDate, err := s.calculateExpiryDate(leaf.IssuedAt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to calculate expiry date: %w", err)
+	}
+
+	// 5. Build the license record
+	// Convert string fields to int64 for the proof system
+	// In a real implementation, these would already be numeric or properly encoded
+	licenceNumberInt := new(big.Int).SetBytes(sha256.Sum256([]byte(leaf.LicenceNumber))).Int64()
+	record := LicenseRecord{
+		LicenceNumber:            licenceNumberInt,
+		HolderIdentityCommitment: holderIdentityCommitment,
+		Category:                 category,
+		IssueDate:                leaf.IssuedAt.Unix(),
+		ExpiryDate:               expiryDate,
+	}
+
+	// 6. Get the current Merkle root from the LicenseRegistry contract
+	rootBytes, err := s.GetShadowTreeRoot(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get shadow tree root: %w", err)
+	}
+	root := new(big.Int).SetBytes(rootBytes)
+
+	// 7. Get the Merkle path (siblings) from the shadow Merkle tree
+	if leaf.LeafIndex == nil {
+		return nil, nil, fmt.Errorf("license leaf index not available (license not yet confirmed on-chain)")
+	}
+	siblingsBytes, err := s.GetShadowTreeSiblings(ctx, *leaf.LeafIndex)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get shadow tree siblings: %w", err)
+	}
+
+	// Convert siblings from [][]byte to []*big.Int
+	var siblings [merkle.TreeDepth]*big.Int
+	for i, sibBytes := range siblingsBytes {
+		siblings[i] = new(big.Int).SetBytes(sibBytes)
+	}
+
+	// 8. Compute the path bits from the leaf index
+	var pathBits [merkle.TreeDepth]int
+	leafIndex := *leaf.LeafIndex
+	for i := 0; i < merkle.TreeDepth; i++ {
+		pathBits[i] = (int(leafIndex >> uint(i)) & 1)
+	}
+
+	// 9. Build the Merkle path
+	path := MerklePath{
+		Root:     root,
+		Siblings: siblings,
+		PathBits: pathBits,
+	}
+
+	// 10. Get the proving key for the licenseproof circuit
+	// In a real implementation, this would be loaded from secure storage
+	// For now, we'll need to compile the circuit and get the proving key
+	// This is a simplified placeholder - in practice, you'd cache the proving key
+	var licenseproofCircuit licenseproof.Circuit
+	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), frontend.R1CS, &licenseproofCircuit)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to compile licenseproof circuit: %w", err)
+	}
+	pk, err := groth16.Setup(ccs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to setup proving key: %w", err)
+	}
+
+	// 11. Create the request
+	req := Request{
+		Record:           record,
+		Path:             path,
+		RequiredCategory: requiredCategory,
+		CurrentTimestamp: currentTimestamp,
+	}
+
+	// 12. Generate the proof
+	proof, publicWitness, err := prover.GenerateProof(ccs, pk, req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to generate proof: %w", err)
+	}
+
+	return proof, publicWitness, nil
 }
