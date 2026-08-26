@@ -98,10 +98,10 @@ export const DigitalWallet: React.FC<DigitalWalletProps> = ({
               className="relative perspective-1000 transition-all duration-300"
             >
               {/* CARD FRONT / BACK CONTAINER */}
-              <div className="bg-[#1e3a5f] text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-white/10 relative overflow-hidden flex flex-col justify-between min-h-[340px]">
+              <div className="bg-white text-[#0e1e38] rounded-3xl p-6 sm:p-7 shadow-lg border border-slate-200/80 relative overflow-hidden flex flex-col justify-between min-h-[340px]">
                 
                 {/* Subtle mesh background */}
-                <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:18px_18px] pointer-events-none" />
+                <div className="absolute inset-0 bg-[radial-gradient(#0e1e38_1px,transparent_1px)] [background-size:18px_18px] opacity-[0.04] pointer-events-none" />
 
                 {!isFlipped ? (
                   /* FRONT FACE */
@@ -110,65 +110,65 @@ export const DigitalWallet: React.FC<DigitalWalletProps> = ({
                       {/* Top Authority Header */}
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-[#1e3a5f] font-black text-xs shadow-md">
+                          <div className="w-10 h-10 rounded-2xl bg-[#0e1e38] flex items-center justify-center text-white font-black text-xs shadow-sm">
                             RW
                           </div>
                           <div>
-                            <div className="text-[10px] font-bold tracking-wider uppercase text-slate-300">
+                            <div className="text-[10px] font-bold tracking-wider uppercase text-slate-500">
                               {doc.issuingAuthority}
                             </div>
-                            <div className="text-sm font-black tracking-tight text-white">
+                            <div className="text-sm font-black tracking-tight text-[#0e1e38]">
                               {doc.title}
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white border border-white/20">
-                          <CheckCircle2 className="w-3 h-3 text-white" />
+                        <div className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#0e1e38]/10 text-[#0e1e38] border border-[#0e1e38]/20">
+                          <CheckCircle2 className="w-3 h-3 text-[#0e1e38]" />
                           <span>{doc.status === 'EXPIRING_SOON' ? 'EXPIRING 14D' : doc.status}</span>
                         </div>
                       </div>
 
                       {/* Middle Details Box */}
                       {isLicence ? (
-                        <div className="flex gap-4 items-center my-4 bg-white/5 p-3.5 rounded-2xl border border-white/10">
+                        <div className="flex gap-4 items-center my-4 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={mockDriver.photoUrl}
                             alt={mockDriver.fullName}
-                            className="w-16 h-16 rounded-xl object-cover border border-white/30"
+                            className="w-16 h-16 rounded-xl object-cover border border-slate-200 shadow-sm"
                           />
                           <div className="flex-1 min-w-0 space-y-0.5">
-                            <div className="text-sm font-black truncate">{mockDriver.fullName}</div>
-                            <div className="text-xs font-mono text-slate-300 font-bold">{doc.documentNumber}</div>
-                            <div className="text-[11px] text-slate-400">NID: {mockDriver.nationalId}</div>
-                            <div className="text-[11px] text-white">
-                              Categories: <strong className="text-white font-bold">A, B, D</strong>
+                            <div className="text-sm font-black text-[#0e1e38] truncate">{mockDriver.fullName}</div>
+                            <div className="text-xs font-mono text-[#0e1e38] font-bold">{doc.documentNumber}</div>
+                            <div className="text-[11px] text-slate-500">NID: {mockDriver.nationalId}</div>
+                            <div className="text-[11px] text-slate-600">
+                              Categories: <strong className="text-[#0e1e38] font-bold">A, B, D</strong>
                             </div>
                           </div>
                         </div>
                       ) : (
-                        <div className="my-4 bg-white/5 p-3.5 rounded-2xl border border-white/10 space-y-2 text-xs">
+                        <div className="my-4 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-2 text-xs">
                           <div className="flex justify-between items-center">
-                            <span className="text-slate-400">Vehicle:</span>
-                            <span className="font-mono font-bold text-white bg-white/10 px-2 py-0.5 rounded border border-white/10">
+                            <span className="text-slate-500">Vehicle:</span>
+                            <span className="font-mono font-bold text-[#0e1e38] bg-slate-200/70 px-2 py-0.5 rounded border border-slate-300/50">
                               {doc.vehiclePlate} ({doc.vehicleModel})
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-slate-400">Doc Ref:</span>
-                            <span className="font-mono text-slate-200">{doc.documentNumber}</span>
+                            <span className="text-slate-500">Doc Ref:</span>
+                            <span className="font-mono text-[#0e1e38] font-semibold">{doc.documentNumber}</span>
                           </div>
                           {doc.insuranceProvider && (
                             <div className="flex justify-between items-center">
-                              <span className="text-slate-400">Underwriter:</span>
-                              <span className="font-semibold text-white">{doc.insuranceProvider}</span>
+                              <span className="text-slate-500">Underwriter:</span>
+                              <span className="font-semibold text-[#0e1e38]">{doc.insuranceProvider}</span>
                             </div>
                           )}
                           {doc.inspectionCenter && (
                             <div className="flex justify-between items-center">
-                              <span className="text-slate-400">Inspection:</span>
-                              <span className="font-semibold text-white">{doc.inspectionCenter} (PASSED)</span>
+                              <span className="text-slate-500">Inspection:</span>
+                              <span className="font-semibold text-[#0e1e38]">{doc.inspectionCenter} (PASSED)</span>
                             </div>
                           )}
                         </div>
@@ -176,16 +176,16 @@ export const DigitalWallet: React.FC<DigitalWalletProps> = ({
                     </div>
 
                     {/* Bottom Metadata & Controls */}
-                    <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+                    <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs">
                       <div className="space-y-0.5">
-                        <span className="text-[10px] text-slate-400 block">Valid Until</span>
-                        <span className="font-bold text-white text-xs">{doc.expiryDate}</span>
+                        <span className="text-[10px] text-slate-500 block">Valid Until</span>
+                        <span className="font-bold text-[#0e1e38] text-xs">{doc.expiryDate}</span>
                       </div>
 
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => toggleFlip(doc.id)}
-                          className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0e1e38] transition-colors"
                           title="View Security Metadata"
                         >
                           <RotateCw className="w-4 h-4" />
@@ -193,9 +193,9 @@ export const DigitalWallet: React.FC<DigitalWalletProps> = ({
 
                         <button
                           onClick={() => onShowQr(doc)}
-                          className="bg-white hover:bg-slate-100 text-[#1e3a5f] font-bold text-xs px-4 py-2 rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                          className="bg-[#0e1e38] hover:bg-[#182e52] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md transition-all flex items-center gap-1.5"
                         >
-                          <QrCode className="w-3.5 h-3.5" />
+                          <QrCode className="w-3.5 h-3.5 text-white" />
                           <span>Show QR</span>
                         </button>
                       </div>
@@ -205,42 +205,42 @@ export const DigitalWallet: React.FC<DigitalWalletProps> = ({
                   /* BACK FACE */
                   <div className="space-y-4 relative z-10 flex-1 flex flex-col justify-between">
                     <div>
-                      <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                        <div className="text-xs font-bold text-slate-300">Cryptographic Verification Spec</div>
+                      <div className="flex justify-between items-center border-b border-slate-200/80 pb-3">
+                        <div className="text-xs font-bold text-[#0e1e38]">Cryptographic Verification Spec</div>
                         <button
                           onClick={() => toggleFlip(doc.id)}
-                          className="p-1 rounded-lg bg-white/10 text-white hover:bg-white/20 text-xs flex items-center gap-1"
+                          className="p-1 rounded-lg bg-slate-100 text-[#0e1e38] hover:bg-slate-200 text-xs flex items-center gap-1"
                         >
                           <RotateCw className="w-3 h-3" />
                           <span>Flip</span>
                         </button>
                       </div>
 
-                      <div className="space-y-2 py-3 text-xs text-slate-300">
+                      <div className="space-y-2 py-3 text-xs text-slate-600">
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Digital Signature:</span>
-                          <span className="font-mono text-white text-[11px]">ECDSA-SHA256 (Valid)</span>
+                          <span className="text-slate-500">Digital Signature:</span>
+                          <span className="font-mono text-[#0e1e38] font-semibold text-[11px]">ECDSA-SHA256 (Valid)</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Issuer Token:</span>
-                          <span className="font-mono text-white text-[11px]">rnp-auth-2025-v3</span>
+                          <span className="text-slate-500">Issuer Token:</span>
+                          <span className="font-mono text-[#0e1e38] font-semibold text-[11px]">rnp-auth-2025-v3</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Privacy Status:</span>
-                          <span className="text-white font-semibold">Zero PII Leakage Compliant</span>
+                          <span className="text-slate-500">Privacy Status:</span>
+                          <span className="text-[#0e1e38] font-semibold">Zero PII Leakage Compliant</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Offline Caching:</span>
-                          <span className="text-white font-semibold">Encrypted Local Storage</span>
+                          <span className="text-slate-500">Offline Caching:</span>
+                          <span className="text-[#0e1e38] font-semibold">Encrypted Local Storage</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-white/10 flex justify-between items-center">
-                      <span className="text-[10px] text-slate-400">Rwanda National Police Validated</span>
+                    <div className="pt-3 border-t border-slate-200/80 flex justify-between items-center">
+                      <span className="text-[10px] text-slate-500">Rwanda National Police Validated</span>
                       <button
                         onClick={() => onShowQr(doc)}
-                        className="bg-white text-[#1e3a5f] font-bold text-xs px-3.5 py-1.5 rounded-xl"
+                        className="bg-[#0e1e38] hover:bg-[#182e52] text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-sm"
                       >
                         Generate QR
                       </button>

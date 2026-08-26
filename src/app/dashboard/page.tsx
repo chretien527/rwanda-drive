@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { DriverDashboard } from '@/components/DriverDashboard';
 import { PoliceDashboard } from '@/components/PoliceDashboard';
 import { QrModal } from '@/components/QrModal';
-import { AddVehicleModal } from '@/components/AddVehicleModal';
 import { DigitalDocument, Vehicle } from '@/lib/types';
 import { mockVehicles, mockDocuments, mockDriver } from '@/lib/mockData';
 import { 
@@ -20,19 +19,32 @@ function DashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialRoleParam = searchParams.get('role');
+  const initialTabParam = searchParams.get('tab');
 
   const [currentRole, setCurrentRole] = useState<'driver' | 'officer'>(
     initialRoleParam === 'officer' ? 'officer' : 'driver'
   );
-  const [driverActiveTab, setDriverActiveTab] = useState<string>('overview');
+  const [driverActiveTab, setDriverActiveTab] = useState<string>(
+    initialTabParam || 'overview'
+  );
   const [policeActiveSection, setPoliceActiveSection] = useState<string>('overview');
   
   const [vehicles, setVehicles] = useState<Vehicle[]>(mockVehicles);
   const [selectedDocForQr, setSelectedDocForQr] = useState<DigitalDocument | null>(mockDocuments[0]);
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
-  const [isAddVehicleOpen, setIsAddVehicleOpen] = useState<boolean>(false);
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const savedVehicles = localStorage.getItem('rwanda_drive_vehicles');
+      if (savedVehicles) {
+        setVehicles(JSON.parse(savedVehicles));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
 
   useEffect(() => {
     if (initialRoleParam === 'officer') {
@@ -40,9 +52,11 @@ function DashboardContent() {
       setPoliceActiveSection('overview');
     } else if (initialRoleParam === 'driver') {
       setCurrentRole('driver');
-      setDriverActiveTab('overview');
+      if (initialTabParam) {
+        setDriverActiveTab(initialTabParam);
+      }
     }
-  }, [initialRoleParam]);
+  }, [initialRoleParam, initialTabParam]);
 
   const handleOpenQr = (doc?: DigitalDocument) => {
     if (doc) setSelectedDocForQr(doc);
@@ -100,23 +114,25 @@ function DashboardContent() {
     <div className="min-h-screen flex bg-slate-50 font-sans text-[#0e1e38]">
       
       {/* ===== SIDEBAR ===== */}
-      <aside className={`fixed left-0 top-0 h-full bg-[#0e1e38] text-white flex flex-col z-50 transition-all duration-300 ${
+      <aside className={`fixed left-0 top-0 h-full bg-speckle-pattern bg-white text-[#0e1e38] flex flex-col z-50 transition-all duration-300 border-r border-slate-200/90 shadow-[10px_0_30px_-5px_rgba(14,30,56,0.18)] ${
         isSidebarCollapsed ? 'w-[72px]' : 'w-[250px]'
       }`}>
+        {/* Right Edge Shadow Seam */}
+        <div className="absolute top-0 -right-3 w-3 h-full bg-gradient-to-r from-[#0e1e38]/10 via-[#0e1e38]/5 to-transparent pointer-events-none" />
         
         {/* Sidebar Header / Brand */}
-        <div className={`px-4 py-5 flex items-center border-b border-white/10 shrink-0 ${
+        <div className={`px-4 py-5 flex items-center border-b border-slate-200/80 shrink-0 ${
           isSidebarCollapsed ? 'justify-center' : 'gap-3'
         }`}>
-          <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-[#0e1e38] shadow shrink-0">
-            <Shield className="w-5 h-5 text-[#0e1e38]" />
+          <div className="w-9 h-9 rounded-xl bg-[#0e1e38] flex items-center justify-center text-white shadow-sm shrink-0">
+            <Shield className="w-5 h-5 text-white" />
           </div>
           {!isSidebarCollapsed && (
             <div>
-              <span className="font-extrabold text-base tracking-tight text-white whitespace-nowrap block leading-tight">
+              <span className="font-extrabold text-base tracking-tight text-[#0e1e38] whitespace-nowrap block leading-tight">
                 Rwanda Drive
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 {currentRole === 'officer' ? 'Police Terminal' : 'Driver Portal'}
               </span>
             </div>
@@ -136,21 +152,21 @@ function DashboardContent() {
                   onClick={() => handleDriverNavClick(item.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group relative ${
                     isActive
-                      ? 'bg-white text-[#0e1e38] shadow-sm'
-                      : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-[#0e1e38] text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100/80 hover:text-[#0e1e38]'
                   } ${isSidebarCollapsed ? 'justify-center' : ''}`}
                   title={isSidebarCollapsed ? item.label : undefined}
                 >
                   {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-[#0e1e38] rounded-r-full -ml-3" />
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3.5px] h-6 bg-[#0e1e38] rounded-r-full -ml-3" />
                   )}
-                  <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-[#0e1e38]' : 'text-slate-400 group-hover:text-white'}`} />
+                  <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-[#0e1e38]'}`} />
                   {!isSidebarCollapsed && (
                     <>
                       <span className="flex-1 text-left">{item.label}</span>
                       {item.badge && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isActive ? 'bg-[#0e1e38] text-white' : 'bg-white/15 text-slate-300'
+                          isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
                         }`}>
                           {item.badge}
                         </span>
@@ -171,21 +187,21 @@ function DashboardContent() {
                   onClick={() => handlePoliceNavClick(item.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group relative ${
                     isActive
-                      ? 'bg-white text-[#0e1e38] shadow-sm'
-                      : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-[#0e1e38] text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100/80 hover:text-[#0e1e38]'
                   } ${isSidebarCollapsed ? 'justify-center' : ''}`}
                   title={isSidebarCollapsed ? item.label : undefined}
                 >
                   {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-[#0e1e38] rounded-r-full -ml-3" />
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3.5px] h-6 bg-[#0e1e38] rounded-r-full -ml-3" />
                   )}
-                  <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-[#0e1e38]' : 'text-slate-400 group-hover:text-white'}`} />
+                  <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-[#0e1e38]'}`} />
                   {!isSidebarCollapsed && (
                     <>
                       <span className="flex-1 text-left">{item.label}</span>
                       {item.badge && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isActive ? 'bg-[#0e1e38] text-white' : 'bg-white/15 text-slate-300'
+                          isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
                         }`}>
                           {item.badge}
                         </span>
@@ -199,10 +215,10 @@ function DashboardContent() {
         </nav>
 
         {/* Sidebar Collapse Toggle */}
-        <div className="px-3 py-2 border-t border-white/10">
+        <div className="px-3 py-2 border-t border-slate-200/80">
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-[#0e1e38] hover:bg-slate-100/80 transition-all"
           >
             {isSidebarCollapsed ? (
               <ChevronRight className="w-4 h-4" />
@@ -216,7 +232,7 @@ function DashboardContent() {
         </div>
 
         {/* Sidebar User Profile Footer (Role Specific) */}
-        <div className={`px-3 py-4 border-t border-white/10 shrink-0 ${isSidebarCollapsed ? 'flex justify-center' : ''}`}>
+        <div className={`px-3 py-4 border-t border-slate-200/80 shrink-0 ${isSidebarCollapsed ? 'flex justify-center' : ''}`}>
           {!isSidebarCollapsed ? (
             <div className="flex items-center gap-3">
               {currentRole === 'driver' ? (
@@ -226,31 +242,31 @@ function DashboardContent() {
                     <img
                       src={mockDriver.photoUrl}
                       alt={mockDriver.fullName}
-                      className="w-9 h-9 rounded-xl object-cover border border-white/30"
+                      className="w-9 h-9 rounded-xl object-cover border border-slate-200 shadow-sm"
                     />
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-white text-[#0e1e38] rounded-full border border-[#0e1e38] flex items-center justify-center">
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#0e1e38] text-white rounded-full border border-white flex items-center justify-center">
                       <Check className="w-2 h-2 stroke-[3]" />
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-white truncate">
+                    <div className="text-xs font-bold text-[#0e1e38] truncate">
                       {mockDriver.fullName}
                     </div>
-                    <div className="text-[10px] text-slate-400 truncate">
+                    <div className="text-[10px] text-slate-500 truncate">
                       {mockDriver.nationalId}
                     </div>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="w-9 h-9 rounded-xl bg-white text-[#0e1e38] flex items-center justify-center shadow shrink-0">
-                    <ShieldCheck className="w-5 h-5 text-[#0e1e38]" />
+                  <div className="w-9 h-9 rounded-xl bg-[#0e1e38] text-white flex items-center justify-center shadow-sm shrink-0">
+                    <ShieldCheck className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-white truncate">
+                    <div className="text-xs font-bold text-[#0e1e38] truncate">
                       IP Habimana Eric
                     </div>
-                    <div className="text-[10px] text-slate-400 truncate font-mono">
+                    <div className="text-[10px] text-slate-500 truncate font-mono">
                       RNP-TFP-0842
                     </div>
                   </div>
@@ -258,7 +274,7 @@ function DashboardContent() {
               )}
               <button
                 onClick={handleLogout}
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors shrink-0"
+                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-[#0e1e38] transition-colors shrink-0"
                 title="Sign Out"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -267,7 +283,7 @@ function DashboardContent() {
           ) : (
             <button
               onClick={handleLogout}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-[#0e1e38] transition-colors"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
@@ -277,7 +293,7 @@ function DashboardContent() {
           {!isSidebarCollapsed && (
             <Link
               href="/"
-              className="mt-2 flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-white font-semibold transition-colors"
+              className="mt-2 flex items-center gap-1.5 text-[10px] text-slate-500 hover:text-[#0e1e38] font-semibold transition-colors"
             >
               <Home className="w-3 h-3" />
               <span>Back to Landing Page</span>
@@ -292,6 +308,19 @@ function DashboardContent() {
         isSidebarCollapsed ? 'ml-[72px]' : 'ml-[250px]'
       }`}>
         
+        {/* Top Notice Marquee Banner (Matching Reference Image) */}
+        <div className="bg-[#0e1e38] text-white text-xs font-semibold px-4 py-1.5 flex items-center justify-between shadow-xs border-b border-white/10 shrink-0">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <span className="bg-amber-500 text-black text-[10px] font-black uppercase px-2 py-0.5 rounded shrink-0">NEW</span>
+            <span className="truncate text-slate-200 text-[11px]">
+              Notice: All drivers with verified profiles can access full system credentials &bull; Live RRA &amp; Police sync active
+            </span>
+          </div>
+          <div className="hidden md:flex items-center gap-3 text-[11px] text-slate-300 shrink-0">
+            <Bell className="w-3.5 h-3.5 text-slate-300" />
+          </div>
+        </div>
+
         {/* Offline Mode Alert */}
         {isOffline && (
           <div className="bg-[#0e1e38] text-white text-xs font-semibold px-4 py-2 text-center flex items-center justify-center gap-2 shadow-md">
@@ -336,7 +365,7 @@ function DashboardContent() {
           {currentRole === 'driver' && (
             <DriverDashboard
               onShowQr={handleOpenQr}
-              onAddVehicle={() => setIsAddVehicleOpen(true)}
+              onAddVehicle={() => router.push('/dashboard/add-vehicle')}
               vehicles={vehicles}
               activeTab={driverActiveTab as 'overview' | 'wallet' | 'vehicles' | 'notifications'}
               onTabChange={setDriverActiveTab}
@@ -362,12 +391,6 @@ function DashboardContent() {
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
         onSimulateOfficerScan={handleSimulateOfficerScan}
-      />
-
-      <AddVehicleModal
-        isOpen={isAddVehicleOpen}
-        onClose={() => setIsAddVehicleOpen(false)}
-        onAdd={handleAddVehicle}
       />
 
     </div>

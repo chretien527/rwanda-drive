@@ -106,8 +106,8 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
     <div className="space-y-6 text-[#0e1e38]">
       
       {/* Welcome Card */}
-      <div className="bg-[#0e1e38] text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-white/10 relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-80 h-80 bg-radial-gradient from-white/10 to-transparent pointer-events-none -mr-16 -mt-16" />
+      <div className="bg-white text-[#0e1e38] rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-80 h-80 bg-radial-gradient from-[#0e1e38]/5 to-transparent pointer-events-none -mr-16 -mt-16" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
           {/* User Info */}
@@ -117,29 +117,29 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
               <img
                 src={mockDriver.photoUrl}
                 alt={mockDriver.fullName}
-                className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow-xl"
+                className="w-16 h-16 rounded-2xl object-cover border-2 border-slate-200 shadow-md"
               />
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white text-[#0e1e38] rounded-full border-2 border-[#0e1e38] flex items-center justify-center font-bold">
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#0e1e38] text-white rounded-full border-2 border-white flex items-center justify-center font-bold">
                 <Check className="w-3 h-3 stroke-[3]" />
               </div>
             </div>
 
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   Driver Account
                 </span>
-                <span className="text-[10px] bg-white/15 text-white px-2 py-0.5 rounded-full border border-white/20 font-bold">
+                <span className="text-[10px] bg-[#0e1e38]/10 text-[#0e1e38] px-2 py-0.5 rounded-full border border-[#0e1e38]/20 font-bold">
                   NIDA VERIFIED
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#0e1e38]">
                 Muraho, {mockDriver.fullName.split(' ')[0]}
               </h1>
-              <div className="text-xs text-slate-300 flex flex-wrap items-center gap-2">
-                <span>NID: <strong className="text-white font-mono">{mockDriver.nationalId}</strong></span>
+              <div className="text-xs text-slate-600 flex flex-wrap items-center gap-2">
+                <span>NID: <strong className="text-[#0e1e38] font-mono">{mockDriver.nationalId}</strong></span>
                 <span>&bull;</span>
-                <span>District: <strong className="text-white">{mockDriver.district}</strong></span>
+                <span>District: <strong className="text-[#0e1e38]">{mockDriver.district}</strong></span>
               </div>
             </div>
           </div>
@@ -148,136 +148,172 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
           <div className="flex gap-2.5">
             <button
               onClick={() => setActiveTab('qr')}
-              className="px-5 py-3 rounded-2xl bg-white hover:bg-slate-100 text-[#0e1e38] font-bold text-xs shadow-lg transition-all flex items-center gap-2"
+              className="px-5 py-3 rounded-2xl bg-[#0e1e38] hover:bg-[#182e52] text-white font-bold text-xs shadow-md transition-all flex items-center gap-2"
             >
-              <QrCode className="w-4 h-4" />
+              <QrCode className="w-4 h-4 text-white" />
               <span>Generate Dynamic QR</span>
             </button>
 
             <button
               onClick={onAddVehicle}
-              className="px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all border border-white/15 flex items-center gap-1.5"
+              className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-[#0e1e38] font-bold text-xs transition-all border border-slate-200 flex items-center gap-1.5"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 text-[#0e1e38]" />
               <span>Add Vehicle</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* ================= TAB 1: OVERVIEW ================= */}
+      {/* ================= TAB 1: OVERVIEW (MINIMALIST DATA & METRICS ONLY) ================= */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          
-          {/* Quick Stats Grid */}
+
+          {/* 4 Minimalist Stat Cards Row (Matching Reference Image) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
-            {/* Stat 1: Verified Docs */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-2">
-              <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Documents</span>
-                <div className="p-2 rounded-xl bg-slate-100 text-[#0e1e38]">
-                  <FileText className="w-4 h-4" />
-                </div>
+            {/* Stat 1: Credential Health */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-slate-500">Profile &amp; Health</span>
+                <div className="text-2xl font-black text-[#0e1e38]">100%</div>
+                <span className="text-[11px] text-slate-400 font-medium">Fully synchronized</span>
               </div>
-              <div className="text-3xl font-black text-[#0e1e38]">{mockDocuments.length}</div>
-              <div className="text-xs text-slate-500 font-semibold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#0e1e38]" />
-                <span>All cryptographically signed</span>
+              <div className="w-10 h-10 rounded-xl bg-slate-100 text-[#0e1e38] flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5 text-[#0e1e38]" />
               </div>
             </div>
 
-            {/* Stat 2: Registered Vehicles */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-2">
-              <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">My Vehicles</span>
-                <div className="p-2 rounded-xl bg-slate-100 text-[#0e1e38]">
-                  <Car className="w-4 h-4" />
-                </div>
+            {/* Stat 2: Active Documents Count */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-slate-500">Active Credentials</span>
+                <div className="text-2xl font-black text-[#0e1e38]">{mockDocuments.length}</div>
+                <span className="text-[11px] text-slate-400 font-medium">In Digital Wallet</span>
               </div>
-              <div className="text-3xl font-black text-[#0e1e38]">{vehicles.length}</div>
-              <div className="text-xs text-slate-500 font-semibold">
-                Linked to National ID
+              <div className="w-10 h-10 rounded-xl bg-slate-100 text-[#0e1e38] flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5 text-[#0e1e38]" />
               </div>
             </div>
 
-            {/* Stat 3: Expiring Soon */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-2">
-              <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Renewal Radar</span>
-                <div className="p-2 rounded-xl bg-slate-100 text-[#0e1e38]">
-                  <Clock className="w-4 h-4" />
-                </div>
+            {/* Stat 3: Linked Vehicles Count */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-slate-500">Registered Vehicles</span>
+                <div className="text-2xl font-black text-[#0e1e38]">{vehicles.length}</div>
+                <span className="text-[11px] text-slate-400 font-medium">RRA Carte Jaune</span>
               </div>
-              <div className="text-3xl font-black text-[#0e1e38]">{expiringDocs.length}</div>
-              <div className="text-xs text-slate-500 font-semibold">
-                {expiringDocs.length > 0 ? 'Insurance expires in 12 days' : 'No upcoming expiries'}
+              <div className="w-10 h-10 rounded-xl bg-slate-100 text-[#0e1e38] flex items-center justify-center shrink-0">
+                <Car className="w-5 h-5 text-[#0e1e38]" />
               </div>
             </div>
 
-            {/* Stat 4: Verification Status */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-2">
-              <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Road Compliance</span>
-                <div className="p-2 rounded-xl bg-slate-100 text-[#0e1e38]">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
+            {/* Stat 4: Upcoming Expiration Radar */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-slate-500">Pending Actions</span>
+                <div className="text-2xl font-black text-[#0e1e38]">{expiringDocs.length}</div>
+                <span className="text-[11px] text-slate-400 font-medium">{expiringDocs.length > 0 ? 'Requires attention' : 'Zero pending'}</span>
               </div>
-              <div className="text-2xl font-black text-[#0e1e38]">100% READY</div>
-              <div className="text-xs text-slate-500 font-semibold">
-                NIDA &bull; RNP &bull; RRA Synced
+              <div className="w-10 h-10 rounded-xl bg-slate-100 text-[#0e1e38] flex items-center justify-center shrink-0">
+                <Clock className="w-5 h-5 text-[#0e1e38]" />
               </div>
             </div>
 
           </div>
 
-          {/* Wallet Documents Preview Grid */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black text-[#0e1e38]">Digital Driving Credentials</h2>
+          {/* 2-Column Main Data Section (Matching Reference Image) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            {/* Left Column (8 cols): Inspection & Verification Activity */}
+            <div className="lg:col-span-8 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-4 min-h-[360px] flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-lg font-black text-[#0e1e38]">Credential Verification Activity</h3>
+                    <p className="text-xs text-slate-500">Recent roadside inspections &amp; cryptographic token validation logs</p>
+                  </div>
+                  <span className="text-xs font-bold bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+                    Last 30 Days
+                  </span>
+                </div>
+
+                <div className="py-12 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                    <ShieldCheck className="w-6 h-6 text-slate-400" />
+                  </div>
+                  <div className="text-sm font-bold text-slate-600">No active traffic infractions or flag logs</div>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Your digital wallet has zero recorded violations. All traffic officer scans show 100% compliance.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
+                <span>Synchronized with Police Command Terminal</span>
+                <button
+                  onClick={() => setActiveTab('qr')}
+                  className="font-bold text-[#0e1e38] hover:underline flex items-center gap-1"
+                >
+                  <span>Generate QR Code Token</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column (4 cols): Profile & Document Health Widget (Matching Reference Image) */}
+            <div className="lg:col-span-4 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-6">
+              <h3 className="text-base font-black text-[#0e1e38] pb-3 border-b border-slate-100">
+                Document Health
+              </h3>
+
+              {/* Progress Bar */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-slate-500">Completeness</span>
+                  <span className="text-[#0e1e38]">100%</span>
+                </div>
+                <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#0e1e38] rounded-full w-full" />
+                </div>
+              </div>
+
+              {/* Attributes List */}
+              <div className="space-y-3 text-xs">
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                  <span className="text-slate-500 font-medium">NIDA Verification:</span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                    Verified
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                  <span className="text-slate-500 font-medium">Licence Categories:</span>
+                  <span className="font-bold text-[#0e1e38]">Cat A, B, D</span>
+                </div>
+
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                  <span className="text-slate-500 font-medium">Linked Vehicles:</span>
+                  <span className="font-mono font-bold text-[#0e1e38]">{vehicles.length} Units</span>
+                </div>
+
+                <div className="flex justify-between items-center py-1.5">
+                  <span className="text-slate-500 font-medium">Security Encryption:</span>
+                  <span className="font-mono text-[#0e1e38] font-bold">ECDSA-256</span>
+                </div>
+              </div>
+
+              {/* Open Digital Wallet CTA Button */}
               <button
                 onClick={() => setActiveTab('wallet')}
-                className="text-xs font-bold text-[#0e1e38] hover:underline flex items-center gap-1"
+                className="w-full py-3 rounded-2xl bg-[#0e1e38] hover:bg-[#182e52] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
               >
+                <FileText className="w-4 h-4" />
                 <span>Open Digital Wallet</span>
-                <ChevronRight className="w-3.5 h-3.5" />
               </button>
+
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {mockDocuments.map((doc) => (
-                <div
-                  key={doc.id}
-                  onClick={() => setActiveTab('qr')}
-                  className="bg-white rounded-3xl p-6 border border-slate-200 hover:border-[#0e1e38] shadow-sm hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#0e1e38] text-white">
-                        {doc.type.replace('_', ' ')}
-                      </span>
-                      <span className={`text-[10px] font-bold ${doc.status === 'EXPIRING_SOON' ? 'text-amber-600' : 'text-[#0e1e38]'}`}>
-                        {doc.status === 'EXPIRING_SOON' ? 'Expiring Soon' : 'Valid'}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h3 className="font-extrabold text-base text-[#0e1e38] group-hover:text-[#182e52] transition-colors">
-                        {doc.title}
-                      </h3>
-                      <p className="text-xs text-slate-500 font-mono mt-0.5">
-                        {doc.documentNumber}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#0e1e38]">
-                    <span>Generate QR</span>
-                    <QrCode className="w-4 h-4" />
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
         </div>

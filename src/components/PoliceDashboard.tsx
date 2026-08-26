@@ -215,46 +215,46 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({
     <div className="space-y-8 text-[#0e1e38] max-w-7xl mx-auto">
       
       {/* 1. POLICE COMMAND BADGE & QUICK STATUS BAR */}
-      <div className="bg-[#0e1e38] text-white p-6 sm:p-8 rounded-3xl border border-white/10 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-radial-gradient from-white/10 to-transparent pointer-events-none -mr-20 -mt-20" />
+      <div className="bg-white text-[#0e1e38] p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-sm relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-96 h-96 bg-radial-gradient from-[#0e1e38]/5 to-transparent pointer-events-none -mr-20 -mt-20" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-white text-[#0e1e38] flex items-center justify-center shadow-2xl shrink-0">
-              <ShieldCheck className="w-9 h-9 text-[#0e1e38]" />
+            <div className="w-16 h-16 rounded-2xl bg-[#0e1e38] text-white flex items-center justify-center shadow-md shrink-0">
+              <ShieldCheck className="w-9 h-9 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/15 text-white border border-white/20">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#0e1e38]/10 text-[#0e1e38] border border-[#0e1e38]/20">
                   RNP Traffic Enforcement Command
                 </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-white/10 px-2 py-0.5 rounded-full">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0e1e38] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                   Live Patrol Radar
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1">
+              <h1 className="text-2xl sm:text-3xl font-black text-[#0e1e38] tracking-tight mt-1">
                 Inspector Eric Habimana
               </h1>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Badge: <span className="font-mono font-bold text-white">RNP-TFP-0842</span> &bull; Patrol Unit: <span className="font-semibold text-white">Cruiser Alpha-7</span> &bull; Station: <span className="font-semibold text-white">Kigali Central</span>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Badge: <span className="font-mono font-bold text-[#0e1e38]">RNP-TFP-0842</span> &bull; Patrol Unit: <span className="font-semibold text-[#0e1e38]">Cruiser Alpha-7</span> &bull; Station: <span className="font-semibold text-[#0e1e38]">Kigali Central</span>
               </p>
             </div>
           </div>
 
           {/* Quick Stats Banner */}
-          <div className="grid grid-cols-3 gap-3 bg-white/10 p-3 rounded-2xl border border-white/15 backdrop-blur-md">
-            <div className="text-center px-3 border-r border-white/10">
-              <div className="text-[10px] uppercase font-bold text-slate-300">Shift Scans</div>
-              <div className="text-xl font-black text-white font-mono">{shiftLogs.length + 38}</div>
+          <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+            <div className="text-center px-3 border-r border-slate-200">
+              <div className="text-[10px] uppercase font-bold text-slate-500">Shift Scans</div>
+              <div className="text-xl font-black text-[#0e1e38] font-mono">{shiftLogs.length + 38}</div>
             </div>
-            <div className="text-center px-3 border-r border-white/10">
-              <div className="text-[10px] uppercase font-bold text-slate-300">Compliance</div>
-              <div className="text-xl font-black text-white font-mono">96.4%</div>
+            <div className="text-center px-3 border-r border-slate-200">
+              <div className="text-[10px] uppercase font-bold text-slate-500">Compliance</div>
+              <div className="text-xl font-black text-[#0e1e38] font-mono">96.4%</div>
             </div>
             <div className="text-center px-3">
-              <div className="text-[10px] uppercase font-bold text-slate-300">Flagged</div>
-              <div className="text-xl font-black text-white font-mono">2</div>
+              <div className="text-[10px] uppercase font-bold text-slate-500">Flagged</div>
+              <div className="text-xl font-black text-[#0e1e38] font-mono">2</div>
             </div>
           </div>
         </div>
