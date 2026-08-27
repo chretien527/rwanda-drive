@@ -6,7 +6,7 @@ import { DriverDashboard } from '@/components/DriverDashboard';
 import { PoliceDashboard } from '@/components/PoliceDashboard';
 import { QrModal } from '@/components/QrModal';
 import { DigitalDocument, Vehicle } from '@/lib/types';
-import { mockVehicles, mockDocuments, mockDriver } from '@/lib/mockData';
+import { mockVehicles, mockDocuments, mockDriver, mockNotifications } from '@/lib/mockData';
 import { 
   Shield, Car, QrCode, LogOut, WifiOff, LayoutDashboard,
   FileText, Bell, ShieldCheck, Settings, Home, 
@@ -58,6 +58,9 @@ function DashboardContent() {
     }
   }, [initialRoleParam, initialTabParam]);
 
+  const unreadNotificationsCount = mockNotifications.filter(n => !n.isRead).length;
+  const validDocumentsCount = mockDocuments.filter(d => d.status === 'VALID').length;
+
   const handleOpenQr = (doc?: DigitalDocument) => {
     if (doc) setSelectedDocForQr(doc);
     else setSelectedDocForQr(mockDocuments[0]);
@@ -80,10 +83,10 @@ function DashboardContent() {
   // DRIVER SIDEBAR ITEMS
   const driverSidebarItems = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'wallet', label: 'Digital Wallet', icon: FileText, badge: `${mockDocuments.length}` },
+    { id: 'wallet', label: 'Digital Wallet', icon: FileText, badge: `${validDocumentsCount}` },
     { id: 'vehicles', label: 'My Vehicles', icon: Car, badge: `${vehicles.length}` },
     { id: 'qr', label: 'QR Generator', icon: QrCode },
-    { id: 'notifications', label: 'Alerts', icon: Bell },
+    { id: 'notifications', label: 'Alerts', icon: Bell, badge: `${unreadNotificationsCount}` },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -318,6 +321,11 @@ function DashboardContent() {
           </div>
           <div className="hidden md:flex items-center gap-3 text-[11px] text-slate-300 shrink-0">
             <Bell className="w-3.5 h-3.5 text-slate-300" />
+            {unreadNotificationsCount > 0 && (
+              <span className="ml-1 h-2.5 w-2.5 flex items-center justify-center bg-[#0e1e38] text-white text-[8px] font-bold rounded-full">
+                {unreadNotificationsCount}
+              </span>
+            )}
           </div>
         </div>
 

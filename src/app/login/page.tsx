@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Shield, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Shield, Eye, EyeOff, ArrowLeft, MailCheck, Send } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { apiService } from '@/lib/api';
+import { apiService, ApiError } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,27 +15,195 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Email verification state
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [verificationToken, setVerificationToken] = useState('');
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verifySuccess, setVerifySuccess] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      // For now, treating identifier as email (can be enhanced to handle phone)
-      await apiService.login(identifier, password);
-
-      // Get user info to determine role
-      const user = await apiService.getCurrentUser();
-      const redirectRole = user.role === 'OFFICER' ? 'officer' : 'driver';
+      const loginResponse = await apiService.login(identifier, password);
+      const redirectRole = loginResponse.user.role === 'OFFICER' ? 'officer' : 'driver';
 
       router.push(`/dashboard?role=${redirectRole}`);
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      if (err instanceof ApiError && err.code === 'AUTH_EMAIL_NOT_VERIFIED') {
+        setNeedsVerification(true);
+      } else {
+        setError(err.message || 'Login failed');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const handleVerifyEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setVerifyLoading(true);
+    setVerifyError(null);
+
+    try {
+      await apiService.verifyEmail(verificationToken);
+      setVerifySuccess(true);
+
+      // After successful verification, try logging in again
+      const loginResponse = await apiService.login(identifier, password);
+      const redirectRole = loginResponse.user.role === 'OFFICER' ? 'officer' : 'driver';
+      router.push(`/dashboard?role=${redirectRole}`);
+    } catch (err: any) {
+      setVerifyError(err.message || 'Verification failed');
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    setResendSuccess(false);
+
+    try {
+      // First login to get a token (the backend blocks unverified users,
+      // but the resend endpoint still needs a valid JWT).
+      // We attempt login — it will fail with AUTH_EMAIL_NOT_VERIFIED,
+      // but the register endpoint logged the token to the console during signup.
+      // Instead, we'll use the register endpoint to re-trigger verification.
+      await apiService.register(identifier, password);
+      setResendSuccess(true);
+    } catch (err: any) {
+      // The resend-verification endpoint requires a valid token.
+      // If the user hasn't verified yet, we can't call resend.
+      // Show a helpful message instead.
+      setVerifyError(
+        'Could not resend automatically. Check your email for the verification link, or use the token from the server logs.'
+      );
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  // ── Verification UI ───────────────────────────────────────────────
+  if (needsVerification && !verifySuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-speckle-pattern font-sans p-6">
+        <div className="w-full max-w-[80vw] min-h-[85vh] flex rounded-2xl overflow-hidden shadow-lg border border-slate-200/60 bg-white">
+
+          {/* Left branding panel */}
+          <div className="hidden lg:flex lg:w-[44%] bg-[#0e1e38] text-white flex-col items-center justify-center p-12 relative">
+            <div className="flex flex-col items-center gap-5">
+              <div className="w-20 h-20 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center">
+                <MailCheck className="w-9 h-9 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight text-center">
+                Verify Your Email
+              </h2>
+              <p className="text-sm text-slate-400 text-center max-w-[240px] leading-relaxed">
+                We sent a verification token to your email address. Enter it below to activate your account.
+              </p>
+            </div>
+          </div>
+
+          {/* Right form panel */}
+          <div className="flex-1 flex flex-col bg-white">
+            <div className="flex-1 flex flex-col justify-center px-8 sm:px-12 lg:px-20 py-12 max-w-[520px] w-full mx-auto">
+
+              {/* Back link */}
+              <button
+                onClick={() => { setNeedsVerification(false); setError(null); }}
+                className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[#0e1e38] mb-10 w-fit transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Login
+              </button>
+
+              {/* Heading */}
+              <h1 className="text-[28px] font-bold text-[#0e1e38] tracking-tight">
+                Email Verification
+              </h1>
+              <p className="text-sm text-slate-500 mt-1.5 mb-8">
+                Enter the verification token sent to <span className="font-semibold text-[#0e1e38]">{identifier}</span>
+              </p>
+
+              {/* Verification form */}
+              <form onSubmit={handleVerifyEmail} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-[#0e1e38] mb-1.5">
+                    Verification Token
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={verificationToken}
+                    onChange={(e) => setVerificationToken(e.target.value)}
+                    placeholder="Paste your verification token here"
+                    className="w-full px-4 py-3 rounded-lg border border-slate-200 text-sm text-[#0e1e38] placeholder:text-slate-400 focus:outline-none focus:border-[#0e1e38] focus:ring-1 focus:ring-[#0e1e38]/15 transition-colors bg-white font-mono"
+                  />
+                </div>
+
+                {verifyError && (
+                  <p className="text-sm text-red-500 font-medium">{verifyError}</p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={verifyLoading}
+                  className="w-full py-3 rounded-lg bg-[#0e1e38] hover:bg-[#162d4a] text-white text-sm font-semibold transition-colors disabled:opacity-60"
+                >
+                  {verifyLoading ? 'Verifying...' : 'Verify Email'}
+                </button>
+              </form>
+
+              {/* Resend */}
+              <div className="mt-6 text-center">
+                <p className="text-sm text-slate-500 mb-2">Didn&apos;t receive the token?</p>
+                <button
+                  onClick={handleResendVerification}
+                  disabled={resendLoading}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#0e1e38] hover:underline disabled:opacity-60"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  {resendLoading ? 'Sending...' : 'Resend Verification'}
+                </button>
+                {resendSuccess && (
+                  <p className="text-xs text-green-600 font-medium mt-2">
+                    Verification email resent! Check your inbox.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // ── Verification success ──────────────────────────────────────────
+  if (verifySuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-speckle-pattern font-sans p-6">
+        <div className="w-full max-w-md rounded-2xl bg-white shadow-lg border border-slate-200/60 p-12 text-center">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+            <MailCheck className="w-8 h-8 text-green-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-[#0e1e38] mb-2">Email Verified!</h1>
+          <p className="text-sm text-slate-500 mb-6">
+            Your account is now active. Redirecting to your dashboard…
+          </p>
+          <div className="animate-pulse text-sm text-slate-400">Loading…</div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Login form ────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center bg-speckle-pattern font-sans p-6">
       <div className="w-full max-w-[80vw] min-h-[85vh] flex rounded-2xl overflow-hidden shadow-lg border border-slate-200/60 bg-white">
@@ -107,14 +275,14 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-[#0e1e38] mb-1.5">
-                {role === 'driver' ? 'Mobile number or email' : 'Badge ID'}
+                {role === 'driver' ? 'Email address' : 'Badge ID'}
               </label>
               <input
                 type="text"
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder={role === 'driver' ? 'Enter your phone or email' : 'Enter your badge ID'}
+                placeholder={role === 'driver' ? 'Enter your email' : 'Enter your badge ID'}
                 className="w-full px-4 py-3 rounded-lg border border-slate-200 text-sm text-[#0e1e38] placeholder:text-slate-400 focus:outline-none focus:border-[#0e1e38] focus:ring-1 focus:ring-[#0e1e38]/15 transition-colors bg-white"
               />
             </div>
@@ -124,9 +292,9 @@ export default function LoginPage() {
                 <label className="block text-sm font-medium text-[#0e1e38]">
                   Password
                 </label>
-                <span className="text-xs text-slate-400 hover:text-[#0e1e38] cursor-pointer transition-colors">
+                <Link href="/forgot-password" className="text-xs text-slate-400 hover:text-[#0e1e38] cursor-pointer transition-colors">
                   Forgot password?
-                </span>
+                </Link>
               </div>
               <div className="relative">
                 <input
@@ -146,6 +314,10 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
+            {error && (
+              <p className="text-sm text-red-500 font-medium">{error}</p>
+            )}
 
             <button
               type="submit"

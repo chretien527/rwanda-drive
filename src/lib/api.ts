@@ -14,17 +14,17 @@ interface LoginResponse {
     email: string;
     phone?: string;
     role: string;
-    emailVerified: boolean;
-    mfaEnabled: boolean;
-    documentVerified: boolean;
-    biometricVerified: boolean;
+    email_verified: boolean;
+    mfa_enabled: boolean;
+    document_verified: boolean;
+    biometric_verified: boolean;
   };
   tokens?: {
-    accessToken: string;
-    refreshToken: string;
+    access_token: string;
+    refresh_token: string;
   };
-  mfaRequired: boolean;
-  mfaToken?: string;
+  mfa_required: boolean;
+  mfa_token?: string;
 }
 
 interface RegisterResponse {
@@ -65,6 +65,15 @@ interface QRVerificationResponse {
   proofGenerated?: boolean;
 }
 
+export class ApiError extends Error {
+  code: string;
+  constructor(message: string, code: string) {
+    super(message);
+    this.code = code;
+    this.name = 'ApiError';
+  }
+}
+
 class ApiService {
   private getToken(): string | null {
     return localStorage.getItem('access_token');
@@ -80,68 +89,100 @@ class ApiService {
     localStorage.removeItem('refresh_token');
   }
 
+  /**
+   * Wraps fetch and throws ApiError with the backend error code when the
+   * response is not ok, so callers can distinguish error types (e.g.
+   * AUTH_EMAIL_NOT_VERIFIED).
+   */
+  private async request<T>(url: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(url, init);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new ApiError(
+        body.error || `Request failed with status ${res.status}`,
+        body.code || 'UNKNOWN',
+      );
+    }
+    return res.json();
+  }
+
   async login(email: string, password: string): Promise<LoginResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const data = await this.request<LoginResponse>(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Login failed');
-    }
-
-    const data = await response.json();
-
-    // Store tokens if available
+    // Store tokens if available (backend uses snake_case keys)
     if (data.tokens) {
-      this.setTokens(data.tokens.accessToken, data.tokens.refreshToken);
+      this.setTokens(data.tokens.access_token, data.tokens.refresh_token);
     }
 
     return data;
   }
 
   async register(email: string, password: string, phone?: string): Promise<RegisterResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    return this.request<RegisterResponse>(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, phone }),
+    });
+  }
+
+  // ── Password reset ───────────────────────────────────────────────
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`${API_BASE_URL}/auth/password/forgot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`${API_BASE_URL}/auth/password/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, new_password: newPassword }),
+    });
+  }
+
+  // ── Email verification ──────────────────────────────────────────────
+
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`${API_BASE_URL}/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  async resendVerification(): Promise<{ message: string }> {
+    const accessToken = this.getToken();
+    if (!accessToken) {
+      throw new ApiError('Not authenticated', 'AUTH_NOT_AUTHENTICATED');
+    }
+    return this.request<{ message: string }>(`${API_BASE_URL}/auth/resend-verification`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ email, password, phone }),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Registration failed');
-    }
-
-    return response.json();
   }
 
   async refreshToken(): Promise<RefreshTokenResponse> {
     const refreshToken = localStorage.getItem('refresh_token');
     if (!refreshToken) {
-      throw new Error('No refresh token available');
+      throw new ApiError('No refresh token available', 'NO_REFRESH_TOKEN');
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    const data = await this.request<RefreshTokenResponse>(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refreshToken }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
     });
 
-    if (!response.ok) {
-      this.clearTokens();
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Token refresh failed');
-    }
-
-    const data = await response.json();
     // Update access token (refresh token might be rotated)
     if (data.accessToken) {
       localStorage.setItem('access_token', data.accessToken);
@@ -156,22 +197,18 @@ class ApiService {
   async getCurrentUser(): Promise<{ id: string; email: string; role: string }> {
     const token = this.getToken();
     if (!token) {
-      throw new Error('Not authenticated');
+      throw new ApiError('Not authenticated', 'AUTH_NOT_AUTHENTICATED');
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/me`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
+    const data = await this.request<{ id: string; email: string; role: string }>(
+      `${API_BASE_URL}/auth/me`,
+      {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` },
       },
-    });
+    );
 
-    if (!response.ok) {
-      this.clearTokens();
-      throw new Error('Session expired');
-    }
-
-    return response.json();
+    return data;
   }
 
   async logout() {
@@ -192,10 +229,10 @@ class ApiService {
   async refreshQRToken(credentialId: string): Promise<QRTokenResponse> {
     const token = this.getToken();
     if (!token) {
-      throw new Error('Not authenticated');
+      throw new ApiError('Not authenticated', 'AUTH_NOT_AUTHENTICATED');
     }
 
-    const response = await fetch(`${API_BASE_URL}/qr/refresh`, {
+    return this.request<QRTokenResponse>(`${API_BASE_URL}/qr/refresh`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -203,22 +240,15 @@ class ApiService {
       },
       body: JSON.stringify({ credentialId }),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'QR token refresh failed');
-    }
-
-    return response.json();
   }
 
   async verifyQRToken(tokenString: string, purpose: string): Promise<QRVerificationResponse> {
     const token = this.getToken();
     if (!token) {
-      throw new Error('Not authenticated');
+      throw new ApiError('Not authenticated', 'AUTH_NOT_AUTHENTICATED');
     }
 
-    const response = await fetch(`${API_BASE_URL}/verification/scan`, {
+    return this.request<QRVerificationResponse>(`${API_BASE_URL}/verification/scan`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -226,23 +256,16 @@ class ApiService {
       },
       body: JSON.stringify({ token: tokenString, purpose }),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'QR verification failed');
-    }
-
-    return response.json();
   }
 
   // Vehicle endpoints
   async addVehicle(vehicleData: Omit<Vehicle, 'id' | 'registrationStatus' | 'insuranceStatus' | 'inspectionStatus' | 'documentsCount'>): Promise<Vehicle> {
     const token = this.getToken();
     if (!token) {
-      throw new Error('Not authenticated');
+      throw new ApiError('Not authenticated', 'AUTH_NOT_AUTHENTICATED');
     }
 
-    const response = await fetch(`${API_BASE_URL}/vehicles`, {
+    return this.request<Vehicle>(`${API_BASE_URL}/vehicles`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -250,34 +273,18 @@ class ApiService {
       },
       body: JSON.stringify(vehicleData),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to add vehicle');
-    }
-
-    return response.json();
   }
 
   async getVehicles(): Promise<Vehicle[]> {
     const token = this.getToken();
     if (!token) {
-      throw new Error('Not authenticated');
+      throw new ApiError('Not authenticated', 'AUTH_NOT_AUTHENTICATED');
     }
 
-    const response = await fetch(`${API_BASE_URL}/vehicles`, {
+    return this.request<Vehicle[]>(`${API_BASE_URL}/vehicles`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: { 'Authorization': `Bearer ${token}` },
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to fetch vehicles');
-    }
-
-    return response.json();
   }
 }
 
