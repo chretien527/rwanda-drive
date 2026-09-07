@@ -228,7 +228,7 @@ export default function LoginPage() {
             <label className='block text-sm font-medium text-[#0e1e38]'>
               Password
             </label>
-            <Link href='/forgot-password' className='text-xs text-slate-400 hover:text-[#0e1e38] cursor-pointer transition-colors'>
+            <Link href='/reset-password' className='text-xs text-slate-400 hover:text-[#0e1e38] cursor-pointer transition-colors'>
               Forgot password?
             </Link>
           </div>
