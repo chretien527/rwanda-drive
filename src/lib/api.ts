@@ -6,7 +6,7 @@ import {
   VerificationToken
 } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rwanda-drive-backend-2.onrender.com/api/v1';
 
 interface LoginResponse {
   user: {
