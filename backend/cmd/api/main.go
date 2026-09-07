@@ -24,7 +24,7 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 	logger := config.NewLogger(cfg.Environment)
-	db, err := database.NewPostgresDB(cfg, logger)
+	db, err := database.NewMongoDB(cfg, logger)
 	if err != nil {
 		logger.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -64,7 +64,7 @@ func main() {
 	qrHandler := qrcredentials.NewQRHandler(qrService, chainService, authMiddleware, logger)
 	qrHandler.RegisterRoutes(srv.Router)
 
-	vehicleService := vehicle.NewVehicleService(db, logger)
+	vehicleService := vehicle.NewService(db, logger)
 	vehicleHandler := vehicle.NewHandler(vehicleService, logger)
 	vehicleHandler.RegisterRoutes(srv.Router, authMiddleware)
 	logger.Info("Vehicle endpoints registered")

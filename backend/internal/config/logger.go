@@ -1,7 +1,6 @@
 package config
 
 import (
-	"io"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -37,16 +36,33 @@ func NewJSONLogger(development bool) *Logger {
 }
 
 // WithField adds a field to the logger
-func (l *Logger) WithField(key string, value interface{}) *Logger {
-	return &Logger{l.Logger.WithField(key, value)}
+func (l *Logger) WithField(key string, value interface{}) LoggerInterface {
+	return &loggerEntry{l.Logger.WithField(key, value)}
 }
 
 // WithFields adds fields to the logger
-func (l *Logger) WithFields(fields logrus.Fields) *Logger {
-	return &Logger{l.Logger.WithFields(fields)}
+func (l *Logger) WithFields(fields logrus.Fields) LoggerInterface {
+	return &loggerEntry{l.Logger.WithFields(fields)}
 }
 
 // WithError adds an error field to the logger
-func (l *Logger) WithError(err error) *Logger {
-	return &Logger{l.Logger.WithError(err)}
+func (l *Logger) WithError(err error) LoggerInterface {
+	return &loggerEntry{l.Logger.WithError(err)}
+}
+
+// loggerEntry wraps logrus.Entry to implement LoggerInterface
+type loggerEntry struct {
+	*logrus.Entry
+}
+
+func (l *loggerEntry) WithField(key string, value interface{}) LoggerInterface {
+	return &loggerEntry{l.Entry.WithField(key, value)}
+}
+
+func (l *loggerEntry) WithFields(fields logrus.Fields) LoggerInterface {
+	return &loggerEntry{l.Entry.WithFields(fields)}
+}
+
+func (l *loggerEntry) WithError(err error) LoggerInterface {
+	return &loggerEntry{l.Entry.WithError(err)}
 }

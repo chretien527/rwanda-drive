@@ -4,10 +4,10 @@ import (
 	"math/big"
 	"strings"
 
-	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const auditAnchorABI = `[
@@ -71,7 +71,7 @@ type BatchAnchoredEvent struct {
 }
 
 // BatchAnchoredEventSig is the keccak256 of "BatchAnchored(uint256,bytes32,uint256)".
-var BatchAnchoredEventSig = ethereum.Keccak256Hash([]byte("BatchAnchored(uint256,bytes32,uint256)"))
+var BatchAnchoredEventSig = crypto.Keccak256Hash([]byte("BatchAnchored(uint256,bytes32,uint256)"))
 
 // ParseBatchAnchoredEvent decodes a raw log into a BatchAnchoredEvent.
 func (c *AuditAnchor) ParseBatchAnchoredEvent(log types.Log) (*BatchAnchoredEvent, error) {

@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"math/big"
 
-	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -135,12 +135,12 @@ func computeNodeHash(left, right [32]byte) [32]byte {
 	var combined []byte
 	combined = append(combined, left[:]...)
 	combined = append(combined, right[:]...)
-	return crypto.Keccak256Hash(combined)
+	return [32]byte(crypto.Keccak256Hash(combined))
 }
 
 // ComputeAuditLeaf computes a leaf hash for the audit anchor Merkle tree.
 func ComputeAuditLeaf(entryHash [32]byte) [32]byte {
-	return crypto.Keccak256(entryHash[:])
+	return [32]byte(crypto.Keccak256(entryHash[:]))
 }
 
 // BlockToBytes converts a block number to a 32-byte big-endian representation.
@@ -151,7 +151,7 @@ func BlockToBytes(blockNum uint64) []byte {
 }
 
 // HashToBytes converts a common.Hash to a byte slice.
-func HashToBytes(h ethereum.Hash) []byte {
+func HashToBytes(h common.Hash) []byte {
 	b := make([]byte, 32)
 	copy(b, h[:])
 	return b

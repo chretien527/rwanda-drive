@@ -12,6 +12,8 @@ import (
 	"github.com/0xEmmyb2/CipherPass/internal/auth"
 	"github.com/0xEmmyb2/CipherPass/internal/config"
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Handler provides HTTP endpoints for admin chain operations.
@@ -162,30 +164,24 @@ func (h *Handler) HandleListLicenses(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	rows, err := h.service.db.QueryContext(r.Context(),
-		`SELECT id, user_id, licence_number, keccak256_leaf, miMC_leaf, leaf_index, on_chain_root, issued_at, synced_at
-		 FROM license_leaves ORDER BY issued_at DESC LIMIT $1 OFFSET $2`,
-		limit, offset,
-	)
+	opts := options.Find().SetSort(bson.M{"issued_at": -1}).SetLimit(int64(limit)).SetSkip(int64(offset))
+	cursor, err := h.service.db.Collection("license_leaves").Find(r.Context(), bson.M{}, opts)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list license leaves")
 		writeError(w, http.StatusInternalServerError, "failed to list licenses", "INTERNAL_ERROR")
 		return
 	}
-	defer rows.Close()
+	defer cursor.Close(r.Context())
+
+	var leaves []LicenseLeaf
+	if err := cursor.All(r.Context(), &leaves); err != nil {
+		h.logger.WithError(err).Error("Failed to decode license leaves")
+		writeError(w, http.StatusInternalServerError, "failed to list licenses", "INTERNAL_ERROR")
+		return
+	}
 
 	var licenses []licenseLeafResponse
-	for rows.Next() {
-		var leaf LicenseLeaf
-		err := rows.Scan(
-			&leaf.ID, &leaf.UserID, &leaf.LicenceNumber,
-			&leaf.Keccak256Leaf, &leaf.MiMCLeaf, &leaf.LeafIndex, &leaf.OnChainRoot,
-			&leaf.IssuedAt, &leaf.SyncedAt,
-		)
-		if err != nil {
-			h.logger.WithError(err).Error("Failed to scan license leaf")
-			continue
-		}
+	for _, leaf := range leaves {
 
 		issuedAt := leaf.IssuedAt.Format(time.RFC3339)
 		resp := licenseLeafResponse{
@@ -281,10 +277,9 @@ func (h *Handler) HandleGetShadowTreeRoot(w http.ResponseWriter, r *http.Request
 	}
 
 	// Get next index for context
-	var nextIndex int64
-	_ = h.service.db.QueryRowContext(r.Context(),
-		`SELECT next_index FROM shadow_merkle_state WHERE id = 1`,
-	).Scan(&nextIndex)
+	var state ShadowMerkleState
+	_ = h.service.db.Collection("shadow_merkle_state").FindOne(r.Context(), bson.M{"_id": "default"}).Decode(&state)
+	nextIndex := state.NextIndex
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{

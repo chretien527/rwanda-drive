@@ -1,7 +1,6 @@
 package vehicle
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 

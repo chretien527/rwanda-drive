@@ -31,6 +31,7 @@ func (h *AuthHandler) RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/api/v1/auth/refresh", h.HandleRefreshToken).Methods("POST")
 	r.HandleFunc("/api/v1/auth/invite/accept", h.HandleAcceptInvite).Methods("POST")
 	r.HandleFunc("/api/v1/auth/verify-email", h.HandleVerifyEmail).Methods("POST")
+	r.HandleFunc("/api/v1/auth/resend-verification-email", h.HandleResendVerificationEmail).Methods("POST")
 	r.HandleFunc("/api/v1/auth/password/forgot", h.HandleForgotPassword).Methods("POST")
 	r.HandleFunc("/api/v1/auth/password/reset", h.HandleResetPassword).Methods("POST")
 	r.HandleFunc("/api/v1/auth/mfa/verify", h.HandleMFAVerify).Methods("POST")
@@ -55,6 +56,7 @@ func (h *AuthHandler) RegisterRoutes(r *mux.Router) {
 	adminRouter.HandleFunc("/invite", h.HandleCreateInvite).Methods("POST")
 }
 type registerRequest struct {
+	FullName string `json:"full_name"`
 	Email    string `json:"email"`
 	Phone    string `json:"phone,omitempty"`
 	Password string `json:"password"`
@@ -90,6 +92,10 @@ type acceptInviteRequest struct {
 
 type verifyEmailRequest struct {
 	Token string `json:"token"`
+}
+
+type resendVerificationEmailRequest struct {
+	Email string `json:"email"`
 }
 
 type sendOTPRequest struct {
@@ -136,6 +142,7 @@ type mfaDisableRequest struct {
 
 type userResponse struct {
 	ID                string  `json:"id"`
+	FullName          string  `json:"full_name,omitempty"`
 	Email             string  `json:"email"`
 	Phone             *string `json:"phone,omitempty"`
 	Role              string  `json:"role"`
@@ -147,7 +154,7 @@ type userResponse struct {
 
 func userToResponse(u *User) *userResponse {
 	return &userResponse{
-		ID: u.ID, Email: u.Email, Phone: u.Phone, Role: u.Role,
+		ID: u.ID, FullName: u.FullName, Email: u.Email, Phone: u.Phone, Role: u.Role,
 		EmailVerified: u.EmailVerified, MFAEnabled: u.MFAEnabled,
 		DocumentVerified: u.DocumentVerified, BiometricVerified: u.BiometricVerified,
 	}
@@ -163,6 +170,10 @@ func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "email and password are required", "BAD_REQUEST")
 		return
 	}
+	if strings.TrimSpace(req.FullName) == "" {
+		writeError(w, http.StatusBadRequest, "full name is required", "BAD_REQUEST")
+		return
+	}
 	if len(req.Password) < 8 {
 		writeError(w, http.StatusBadRequest, "password must be at least 8 characters", "BAD_REQUEST")
 		return
@@ -172,7 +183,7 @@ func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "an account with this email already exists", "AUTH_USER_EXISTS")
 		return
 	}
-	user, err := h.service.CreateUser(r.Context(), req.Email, req.Phone, req.Password, RoleDriver)
+	user, err := h.service.CreateUser(r.Context(), strings.TrimSpace(req.FullName), req.Email, req.Phone, req.Password, RoleDriver)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to create user")
 		code := "INTERNAL_ERROR"
@@ -409,9 +420,15 @@ func writeError(w http.ResponseWriter, status int, message, code string) {
 func validatePhoneRW(phone string) bool {
     normalized := strings.ReplaceAll(phone, " ", "")
     normalized = strings.ReplaceAll(normalized, "-", "")
-    if strings.HasPrefix(normalized, "+250") { normalized = normalized[4:] }
-    else if strings.HasPrefix(normalized, "250") { normalized = normalized[3:] }
-    else if strings.HasPrefix(normalized, "0") { normalized = normalized[1:] }
-    if len(normalized) != 9 { return false }
-    return normalized[0] == "7" || normalized[0] == "8"
+    if strings.HasPrefix(normalized, "+250") {
+        normalized = normalized[4:]
+    } else if strings.HasPrefix(normalized, "250") {
+        normalized = normalized[3:]
+    } else if strings.HasPrefix(normalized, "0") {
+        normalized = normalized[1:]
+    }
+    if len(normalized) != 9 {
+        return false
+    }
+    return normalized[0] == '7' || normalized[0] == '8'
 }

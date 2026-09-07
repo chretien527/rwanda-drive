@@ -7,6 +7,7 @@ import { PoliceDashboard } from '@/components/PoliceDashboard';
 import { QrModal } from '@/components/QrModal';
 import { DigitalDocument, Vehicle } from '@/lib/types';
 import { mockVehicles, mockDocuments, mockDriver, mockNotifications } from '@/lib/mockData';
+import { apiService } from '@/lib/api';
 import { 
   Shield, Car, QrCode, LogOut, WifiOff, LayoutDashboard,
   FileText, Bell, ShieldCheck, Settings, Home, 
@@ -34,6 +35,19 @@ function DashboardContent() {
   const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [userFullName, setUserFullName] = useState<string>(mockDriver.fullName);
+
+  useEffect(() => {
+    apiService.getCurrentUser()
+      .then((user) => {
+        if (user.full_name) {
+          setUserFullName(user.full_name);
+        }
+      })
+      .catch(() => {
+        // Keep mock fallback when session is unavailable
+      });
+  }, []);
 
   useEffect(() => {
     try {
@@ -244,7 +258,7 @@ function DashboardContent() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={mockDriver.photoUrl}
-                      alt={mockDriver.fullName}
+                      alt={userFullName}
                       className="w-9 h-9 rounded-xl object-cover border border-slate-200 shadow-sm"
                     />
                     <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#0e1e38] text-white rounded-full border border-white flex items-center justify-center">
@@ -253,7 +267,7 @@ function DashboardContent() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-bold text-[#0e1e38] truncate">
-                      {mockDriver.fullName}
+                      {userFullName}
                     </div>
                     <div className="text-[10px] text-slate-500 truncate">
                       {mockDriver.nationalId}
@@ -375,6 +389,7 @@ function DashboardContent() {
               onShowQr={handleOpenQr}
               onAddVehicle={() => router.push('/dashboard/add-vehicle')}
               vehicles={vehicles}
+              driverName={userFullName}
               activeTab={driverActiveTab as 'overview' | 'wallet' | 'vehicles' | 'notifications'}
               onTabChange={setDriverActiveTab}
             />

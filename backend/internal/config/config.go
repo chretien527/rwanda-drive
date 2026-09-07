@@ -39,16 +39,10 @@ type ServerConfig struct {
 	JWTSecret      []byte // Secret for signing JWT access/refresh tokens
 }
 
-// DatabaseConfig holds PostgreSQL connection configuration
+// DatabaseConfig holds MongoDB connection configuration
 type DatabaseConfig struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	DBName   string
-	SSLMode  string
-	PoolMax  int
-	PoolMin  int
+	URI  string
+	Name string
 }
 
 // ChainConfig holds blockchain integration configuration
@@ -93,14 +87,8 @@ func Load() (*Config, error) {
 			JWTSecret:      []byte(jwtSecret),
 		},
 		Database: DatabaseConfig{
-			Host:     getEnv("DB_HOST", "localhost"),
-			Port:     getEnv("DB_PORT", "5432"),
-			User:     getEnv("DB_USER", "postgres"),
-			Password: getEnv("DB_PASSWORD", "postgres"),
-			DBName:   getEnv("DB_NAME", "cipherpass"),
-			SSLMode:  getEnv("DB_SSL_MODE", "disable"),
-			PoolMax:  mustParseInt(getEnv("DB_POOL_MAX", "25")),
-			PoolMin:  mustParseInt(getEnv("DB_POOL_MIN", "2")),
+			URI:  getEnv("MONGODB_URI", "mongodb://localhost:27017"),
+			Name: getEnv("MONGODB_DATABASE", "rwanda_drive"),
 		},
 		Chain: ChainConfig{
 			RPCURL:             getEnv("CHAIN_RPC_URL", "http://127.0.0.1:8545"),

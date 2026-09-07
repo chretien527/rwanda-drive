@@ -26,14 +26,8 @@ func TestHealthCheck(t *testing.T) {
 			JWTSecret:      []byte("test-jwt-secret"),
 		},
 		Database: config.DatabaseConfig{
-			Host:     "localhost",
-			Port:     "5432",
-			User:     "postgres",
-			Password: "postgres",
-			DBName:   "cipherpass_test",
-			SSLMode:  "disable",
-			PoolMax:  5,
-			PoolMin:  2,
+			URI:  "mongodb://localhost:27017",
+			Name: "cipherpass_test",
 		},
 		LogLevel: "debug",
 	}

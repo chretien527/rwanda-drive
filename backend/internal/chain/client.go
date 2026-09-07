@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/0xEmmyb2/CipherPass/internal/config"
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -72,7 +73,7 @@ func (c *Client) SendSignedTransaction(ctx context.Context, tx *types.Transactio
 
 // CallContract performs a read-only (eth_call) contract call.
 func (c *Client) CallContract(ctx context.Context, msg ethereum.CallMsg) ([]byte, error) {
-	return c.rpc.CallContract(ctx, msg)
+	return c.rpc.CallContract(ctx, msg, nil)
 }
 
 // PendingNonce returns the pending transaction count for the signer's address.
@@ -102,7 +103,12 @@ func (c *Client) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]type
 
 // WatchFilterLogs subscribes to log events matching the given query.
 func (c *Client) WatchFilterLogs(ctx context.Context, q ethereum.FilterQuery) (chan types.Log, ethereum.Subscription, error) {
-	return c.rpc.SubscribeFilterLogs(ctx, q)
+	ch := make(chan types.Log)
+	sub, err := c.rpc.SubscribeFilterLogs(ctx, q, ch)
+	if err != nil {
+		return nil, nil, err
+	}
+	return ch, sub, nil
 }
 
 // BuildContractCall creates an ethereum.CallMsg for a read-only contract call.

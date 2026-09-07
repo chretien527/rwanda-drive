@@ -1,31 +1,45 @@
-version: '3.8'
-
 services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+    depends_on:
+      - api
+
   api:
-    build: .
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
-    env_file:
-      - .env
-    depends_on:
-      - postgres
-    volumes:
-      - .:/app
-      - go-cache:/root/.cache/go-build
-md/api/d
-
-  postgres:
-    image: postgres:15-alpine
-    ports:
-      - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: cipherpass
+      ENVIRONMENT: development
+      SERVER_ADDRESS: :8080
+      MONGODB_URI: mongodb://mongodb:27017
+      MONGODB_DATABASE: rwanda_drive
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      CHAIN_RPC_URL: http://host.docker.internal:8545
+      QR_SECRET_KEY: dev-qr-secret-change-me-in-production
+      JWT_SECRET: dev-jwt-secret-change-me-in-production
+      KMS_PROVIDER: local
+      KMS_LOCAL_KEY: ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: rwanda_drive
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
+      - mongodb-data:/data/db
 
 volumes:
-  postgres-data:
-  go-cache:
+  mongodb-data:

@@ -1,15 +1,15 @@
 package qrcredentials
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"net/http"
 
 	"github.com/0xEmmyb2/CipherPass/internal/auth"
+	"github.com/0xEmmyb2/CipherPass/internal/chain"
 	"github.com/0xEmmyb2/CipherPass/internal/config"
 	"github.com/gorilla/mux"
-	"github.com/0xEmmyb2/CipherPass/backend/internal/chain"
 	"github.com/google/uuid"
+	"time"
 )
 
 // QRHandler handles HTTP requests for QR credential operations
@@ -132,20 +132,9 @@ func (h *QRHandler) HandleVerificationScan(w http.ResponseWriter, r *http.Reques
 				h.logger.WithError(err).Warn("Failed to generate license verification proof")
 				// Continue without proof - don't fail the entire verification
 			} else {
-				// Encode proof and public witness for transmission
-				proofBytes, err := proof.MarshalBinary()
-				if err != nil {
-					h.logger.WithError(err).Warn("Failed to marshal proof")
-				} else {
-					publicWitnessBytes, err := publicWitness.MarshalBinary()
-					if err != nil {
-						h.logger.WithError(err).Warn("Failed to marshal public witness")
-					} else {
-						response["proof"] = base64.StdEncoding.EncodeToString(proofBytes)
-						response["public_witness"] = base64.StdEncoding.EncodeToString(publicWitnessBytes)
-						response["proof_generated"] = true
-					}
-				}
+				_ = proof
+				_ = publicWitness
+				response["proof_generated"] = false
 			}
 		}
 	}

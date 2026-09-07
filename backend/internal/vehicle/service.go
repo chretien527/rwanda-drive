@@ -2,22 +2,25 @@ package vehicle
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"time"
 
 	"github.com/0xEmmyb2/CipherPass/internal/config"
 	"github.com/0xEmmyb2/CipherPass/pkg/database"
+	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Service provides vehicle management operations
 type Service struct {
-	db     *database.PostgresDB
+	db     *database.MongoDB
 	logger config.LoggerInterface
 }
 
 // NewService creates a new vehicle service
-func NewService(db *database.PostgresDB, logger config.LoggerInterface) *Service {
+func NewService(db *database.MongoDB, logger config.LoggerInterface) *Service {
 	return &Service{
 		db:     db,
 		logger: logger,
@@ -26,22 +29,22 @@ func NewService(db *database.PostgresDB, logger config.LoggerInterface) *Service
 
 // Vehicle represents a vehicle in the system
 type Vehicle struct {
-	ID              string    `json:"id"`
-	UserID          string    `json:"user_id"`
-	PlateNumber     string    `json:"plate_number"`
-	Make            string    `json:"make"`
-	Model           string    `json:"model"`
-	Year            int       `json:"year"`
-	Color           string    `json:"color"`
-	ChassisNumber   string    `json:"chassis_number"`
-	EngineCapacity  string    `json:"engine_capacity"`
-	Category        string    `json:"category"` // CAR, MOTORCYCLE, TRUCK, BUS
-	RegistrationStatus string  `json:"registration_status"` // ACTIVE, PENDING, EXPIRED
-	InsuranceStatus string    `json:"insurance_status"` // VALID, EXPIRING_SOON, EXPIRED
-	InspectionStatus string   `json:"inspection_status"` // VALID, EXPIRING_SOON, EXPIRED
-	DocumentsCount  int       `json:"documents_count"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID                 string    `json:"id" bson:"id"`
+	UserID             string    `json:"user_id" bson:"user_id"`
+	PlateNumber        string    `json:"plate_number" bson:"plate_number"`
+	Make               string    `json:"make" bson:"make"`
+	Model              string    `json:"model" bson:"model"`
+	Year               int       `json:"year" bson:"year"`
+	Color              string    `json:"color" bson:"color"`
+	ChassisNumber      string    `json:"chassis_number" bson:"chassis_number"`
+	EngineCapacity     string    `json:"engine_capacity" bson:"engine_capacity"`
+	Category           string    `json:"category" bson:"category"`                       // CAR, MOTORCYCLE, TRUCK, BUS
+	RegistrationStatus string    `json:"registration_status" bson:"registration_status"` // ACTIVE, PENDING, EXPIRED
+	InsuranceStatus    string    `json:"insurance_status" bson:"insurance_status"`       // VALID, EXPIRING_SOON, EXPIRED
+	InspectionStatus   string    `json:"inspection_status" bson:"inspection_status"`     // VALID, EXPIRING_SOON, EXPIRED
+	DocumentsCount     int       `json:"documents_count" bson:"documents_count"`
+	CreatedAt          time.Time `json:"created_at" bson:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at" bson:"updated_at"`
 }
 
 // AddVehicle creates a new vehicle record
@@ -59,11 +62,10 @@ func (s *Service) AddVehicle(ctx context.Context, userID string, vehicleData map
 	if !okModel || model == "" {
 		return nil, errors.New("model is required")
 	}
-	yearFloat, okYear := vehicleData["year"].(float64)
-	if !okYear {
+	year, okYear := vehicleData["year"].(int)
+	if !okYear || year <= 0 {
 		return nil, errors.New("year is required and must be a number")
 	}
-	year := int(yearFloat)
 	color, okColor := vehicleData["color"].(string)
 	if !okColor || color == "" {
 		return nil, errors.New("color is required")
@@ -89,46 +91,40 @@ func (s *Service) AddVehicle(ctx context.Context, userID string, vehicleData map
 		return nil, errors.New("category must be one of: CAR, MOTORCYCLE, TRUCK, BUS")
 	}
 
-	// Insert vehicle into database
-	var vehicleID string
-	err := s.db.QueryRowContext(ctx,
-		`INSERT INTO vehicles (user_id, plate_number, make, model, year, color, chassis_number, engine_capacity, category, registration_status, insurance_status, inspection_status, documents_count)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-		 RETURNING id`,
-		userID, plateNumber, make, model, year, color, chassisNumber, engineCapacity, category,
-		"ACTIVE", "VALID", "VALID", 0,
-	).Scan(&vehicleID)
-
+	now := time.Now()
+	vehicle := &Vehicle{
+		ID:                 uuid.NewString(),
+		UserID:             userID,
+		PlateNumber:        plateNumber,
+		Make:               make,
+		Model:              model,
+		Year:               year,
+		Color:              color,
+		ChassisNumber:      chassisNumber,
+		EngineCapacity:     engineCapacity,
+		Category:           category,
+		RegistrationStatus: "ACTIVE",
+		InsuranceStatus:    "VALID",
+		InspectionStatus:   "VALID",
+		DocumentsCount:     0,
+		CreatedAt:          now,
+		UpdatedAt:          now,
+	}
+	_, err := s.db.Collection("vehicles").InsertOne(ctx, vehicle)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to create vehicle record")
 		return nil, err
 	}
-
-	// Fetch the created vehicle
-	vehicle, err := s.GetVehicleByID(ctx, vehicleID, userID)
-	if err != nil {
-		return nil, err
-	}
-
 	return vehicle, nil
 }
 
 // GetVehicleByID retrieves a vehicle by its ID for a specific user
 func (s *Service) GetVehicleByID(ctx context.Context, vehicleID string, userID string) (*Vehicle, error) {
 	var v Vehicle
-	err := s.db.QueryRowContext(ctx,
-		`SELECT id, user_id, plate_number, make, model, year, color, chassis_number, engine_capacity, category,
-		        registration_status, insurance_status, inspection_status, documents_count, created_at, updated_at
-		 FROM vehicles WHERE id = $1 AND user_id = $2`,
-		vehicleID, userID,
-	).Scan(
-		&v.ID, &v.UserID, &v.PlateNumber, &v.Make, &v.Model, &v.Year, &v.Color, &v.ChassisNumber,
-		&v.EngineCapacity, &v.Category, &v.RegistrationStatus, &v.InsuranceStatus, &v.InspectionStatus,
-		&v.DocumentsCount, &v.CreatedAt, &v.UpdatedAt,
-	)
+	err := s.db.Collection("vehicles").FindOne(ctx, bson.M{"id": vehicleID, "user_id": userID}).Decode(&v)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, errors.New("vehicle not found")
 		}
 		s.logger.WithError(err).Error("Failed to query vehicle")
@@ -140,34 +136,27 @@ func (s *Service) GetVehicleByID(ctx context.Context, vehicleID string, userID s
 
 // GetVehiclesByUserID retrieves all vehicles for a specific user
 func (s *Service) GetVehiclesByUserID(ctx context.Context, userID string) ([]Vehicle, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, user_id, plate_number, make, model, year, color, chassis_number, engine_capacity, category,
-		        registration_status, insurance_status, inspection_status, documents_count, created_at, updated_at
-		 FROM vehicles WHERE user_id = $1 ORDER BY created_at DESC`,
-		userID,
+	cursor, err := s.db.Collection("vehicles").Find(ctx,
+		bson.M{"user_id": userID},
+		options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}),
 	)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to query vehicles")
 		return nil, err
 	}
-	defer rows.Close()
+	defer cursor.Close(ctx)
 
-	var vehicles []Vehicle
-	for rows.Next() {
+	vehicles := []Vehicle{}
+	for cursor.Next(ctx) {
 		var v Vehicle
-		err := rows.Scan(
-			&v.ID, &v.UserID, &v.PlateNumber, &v.Make, &v.Model, &v.Year, &v.Color, &v.ChassisNumber,
-			&v.EngineCapacity, &v.Category, &v.RegistrationStatus, &v.InsuranceStatus, &v.InspectionStatus,
-			&v.DocumentsCount, &v.CreatedAt, &v.UpdatedAt,
-		)
-		if err != nil {
+		if err := cursor.Decode(&v); err != nil {
 			s.logger.WithError(err).Error("Failed to scan vehicle")
 			continue
 		}
 		vehicles = append(vehicles, v)
 	}
 
-	if err = rows.Err(); err != nil {
+	if err = cursor.Err(); err != nil {
 		s.logger.WithError(err).Error("Error iterating vehicle rows")
 		return nil, err
 	}

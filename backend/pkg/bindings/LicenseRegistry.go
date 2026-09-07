@@ -7,10 +7,10 @@ import (
 	"math/big"
 	"strings"
 
-	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const licenseRegistryABI = `[
@@ -95,7 +95,7 @@ type LicenseIssuedEvent struct {
 }
 
 // LicenseIssuedEventSig is the keccak256 of "LicenseIssued(bytes32,uint256,bytes32)".
-var LicenseIssuedEventSig = ethereum.Keccak256Hash([]byte("LicenseIssued(bytes32,uint256,bytes32)"))
+var LicenseIssuedEventSig = crypto.Keccak256Hash([]byte("LicenseIssued(bytes32,uint256,bytes32)"))
 
 // ParseLicenseIssuedEvent decodes a raw log into a LicenseIssuedEvent.
 // Indexed parameters are extracted from Topics; non-indexed from Data.

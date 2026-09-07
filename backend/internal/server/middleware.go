@@ -84,32 +84,62 @@ func recoveryMiddleware(logger *config.Logger) func(http.Handler) http.Handler {
 // corsMiddleware adds CORS headers based on configuration
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		allowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
-		if allowedOrigins == "" {
-			allowedOrigins = "http://localhost:3000"
-		}
-
 		origin := r.Header.Get("Origin")
-		allowed := false
-		for _, o := range strings.Split(allowedOrigins, ",") {
-			if strings.TrimSpace(o) == origin {
-				allowed = true
-				break
-			}
-		}
-
-		if allowed {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-		}
-
+		
+		// Always set CORS headers before checking origin
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-ID, X-Idempotency-Key")
+		w.Header().Set("Access-Control-Expose-Headers", "X-Request-ID")
 		w.Header().Set("Access-Control-Max-Age", "86400")
-
-		// Handle preflight
+		
+		// Handle preflight immediately
 		if r.Method == http.MethodOptions {
+			if origin != "" {
+				// In development, allow all localhost origins
+				env := os.Getenv("ENVIRONMENT")
+				isDevelopment := env == "" || env == "development"
+				
+				if isDevelopment && (strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1")) {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					w.Header().Set("Access-Control-Allow-Credentials", "true")
+				}
+			}
 			w.WriteHeader(http.StatusNoContent)
 			return
+		}
+
+		// For actual requests, check origin
+		if origin != "" {
+			allowed := false
+			
+			// Get configured origins
+			allowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
+			if allowedOrigins == "" {
+				allowedOrigins = "http://localhost:3000"
+			}
+			
+			// Check exact matches
+			for _, o := range strings.Split(allowedOrigins, ",") {
+				if strings.TrimSpace(o) == origin {
+					allowed = true
+					break
+				}
+			}
+			
+			// In development, allow any localhost or 127.0.0.1
+			if !allowed {
+				env := os.Getenv("ENVIRONMENT")
+				isDevelopment := env == "" || env == "development"
+				
+				if isDevelopment && (strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1")) {
+					allowed = true
+				}
+			}
+			
+			if allowed {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
 		}
 
 		next.ServeHTTP(w, r)

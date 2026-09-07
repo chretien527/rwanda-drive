@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import QRCode from 'qrcode';
 import { mockDriver, mockVehicles, mockDocuments, mockNotifications } from '@/lib/mockData';
 import { DigitalDocument, Vehicle } from '@/lib/types';
 import { DigitalWallet } from './DigitalWallet';
@@ -22,7 +23,6 @@ import {
   Shield,
   User,
   Settings as SettingsIcon,
-  Globe,
   Key,
   Database,
   Eye,
@@ -34,6 +34,7 @@ interface DriverDashboardProps {
   onShowQr: (doc?: DigitalDocument) => void;
   onAddVehicle: () => void;
   vehicles: Vehicle[];
+  driverName?: string;
   activeTab?: 'overview' | 'wallet' | 'vehicles' | 'notifications' | 'qr' | 'settings' | string;
   onTabChange?: (tab: string) => void;
 }
@@ -42,9 +43,11 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   onShowQr,
   onAddVehicle,
   vehicles,
+  driverName,
   activeTab: externalTab,
   onTabChange: externalTabChange
 }) => {
+  const displayName = driverName || mockDriver.fullName;
   const [internalTab, setInternalTab] = useState<string>('overview');
   const activeTab = externalTab || internalTab;
   const setActiveTab = (tab: string) => {
@@ -59,35 +62,69 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   const [selectedDocId, setSelectedDocId] = useState<string>(mockDocuments[0].id);
   const [qrCountdown, setQrCountdown] = useState<number>(58);
   const [qrFlash, setQrFlash] = useState<boolean>(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+
+  const generateQrToken = useCallback(() => {
+    const doc = mockDocuments.find(d => d.id === selectedDocId) || mockDocuments[0];
+    const timestamp = Date.now();
+    const randomNonce = Math.random().toString(36).substring(2, 10);
+    const mockHash = `RW-TOKEN-${doc.id}-${timestamp.toString().slice(-6)}-${randomNonce.toUpperCase()}`;
+
+    const payload = JSON.stringify({
+      token: mockHash,
+      driverId: mockDriver.id,
+      driverName: displayName,
+      docId: doc.id,
+      docType: doc.type,
+      issuedAt: new Date(timestamp).toISOString(),
+      expiresInSec: 60,
+      signature: 'RNP_ECDSA_SHA256_' + randomNonce
+    });
+
+    QRCode.toDataURL(payload, {
+      width: 280,
+      margin: 2,
+      color: {
+        dark: '#0e1e38',
+        light: '#ffffff'
+      }
+    })
+      .then(url => setQrDataUrl(url))
+      .catch(err => console.error(err));
+  }, [selectedDocId, displayName]);
+
+  // QR Timer — countdown ticks every second; token regenerates every 60s only
+  useEffect(() => {
+    generateQrToken();
+
+    const timer = setInterval(() => {
+      setQrCountdown((prev) => {
+        if (prev <= 1) {
+          setQrFlash(true);
+          setTimeout(() => setQrFlash(false), 500);
+          generateQrToken();
+          return 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [generateQrToken]);
+
+  const handleManualQrRefresh = () => {
+    setQrFlash(true);
+    setQrCountdown(60);
+    generateQrToken();
+    setTimeout(() => setQrFlash(false), 500);
+  };
 
   // Settings State
   const [biometricEnabled, setBiometricEnabled] = useState<boolean>(true);
   const [smsAlertsEnabled, setSmsAlertsEnabled] = useState<boolean>(true);
   const [emailAlertsEnabled, setEmailAlertsEnabled] = useState<boolean>(true);
   const [offlineCacheEnabled, setOfflineCacheEnabled] = useState<boolean>(true);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
   const [settingsSaved, setSettingsSaved] = useState<boolean>(false);
-
-  // QR Timer
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setQrCountdown((prev) => {
-        if (prev <= 1) {
-          setQrFlash(true);
-          setTimeout(() => setQrFlash(false), 500);
-          return 60;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleManualQrRefresh = () => {
-    setQrFlash(true);
-    setQrCountdown(60);
-    setTimeout(() => setQrFlash(false), 500);
-  };
 
   const markAllRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
@@ -116,7 +153,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={mockDriver.photoUrl}
-                alt={mockDriver.fullName}
+                alt={displayName}
                 className="w-16 h-16 rounded-2xl object-cover border-2 border-slate-200 shadow-md"
               />
               <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#0e1e38] text-white rounded-full border-2 border-white flex items-center justify-center font-bold">
@@ -134,7 +171,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#0e1e38]">
-                Muraho, {mockDriver.fullName.split(' ')[0]}
+                Hello, {displayName.split(' ')[0]}
               </h1>
               <div className="text-xs text-slate-600 flex flex-wrap items-center gap-2">
                 <span>NID: <strong className="text-[#0e1e38] font-mono">{mockDriver.nationalId}</strong></span>
@@ -327,6 +364,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
             setActiveTab('qr');
           }}
           filterVehicle={selectedVehicleFilter}
+          driverName={displayName}
         />
       )}
 
@@ -472,35 +510,22 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                 </div>
               </div>
 
-              {/* Dynamic Rotating QR Matrix Frame */}
+              {/* Scannable QR Code */}
               <div className={`p-6 bg-slate-50 rounded-3xl border-2 border-slate-200 shadow-inner relative transition-all duration-300 ${
                 qrFlash ? 'scale-95 opacity-50' : 'scale-100 opacity-100'
               }`}>
-                {/* 4 Corner brackets */}
-                <div className="absolute top-2 left-2 w-6 h-6 border-t-2 border-l-2 border-[#0e1e38] rounded-tl-md" />
-                <div className="absolute top-2 right-2 w-6 h-6 border-t-2 border-r-2 border-[#0e1e38] rounded-tr-md" />
-                <div className="absolute bottom-2 left-2 w-6 h-6 border-b-2 border-l-2 border-[#0e1e38] rounded-bl-md" />
-                <div className="absolute bottom-2 right-2 w-6 h-6 border-b-2 border-r-2 border-[#0e1e38] rounded-br-md" />
-
-                {/* QR Matrix */}
-                <div className="w-56 h-56 bg-[#0e1e38] rounded-2xl p-4 flex flex-col justify-between text-white relative shadow-md">
-                  <div className="grid grid-cols-7 gap-1 h-full w-full opacity-90">
-                    {Array.from({ length: 49 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className={`rounded-xs ${
-                          (i + qrCountdown) % 2 === 0 || (i + qrCountdown) % 3 === 0 ? 'bg-white' : 'bg-transparent'
-                        }`}
-                      />
-                    ))}
+                {qrDataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={qrDataUrl}
+                    alt="Dynamic verification QR code"
+                    className="w-56 h-56 rounded-2xl shadow-md bg-white"
+                  />
+                ) : (
+                  <div className="w-56 h-56 flex items-center justify-center">
+                    <RefreshCw className="w-8 h-8 animate-spin text-slate-400" />
                   </div>
-
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-[#0e1e38] shadow-lg">
-                      <ShieldCheck className="w-7 h-7 text-[#0e1e38]" />
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Document Identity Info */}
@@ -509,7 +534,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                   {activeDoc.title}
                 </h3>
                 <div className="text-xs text-slate-500 font-mono">
-                  {activeDoc.documentNumber} &bull; Holder: {mockDriver.fullName}
+                  {activeDoc.documentNumber} &bull; Holder: {displayName}
                 </div>
               </div>
 
@@ -643,31 +668,6 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                 <div className="pt-2 border-t border-slate-200/80 flex justify-between items-center text-xs">
                   <span className="text-slate-600 font-medium">Cached Cryptographic Keys:</span>
                   <span className="font-mono font-bold text-[#0e1e38]">4 Signatures Synced</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 4: Language & Regional Preferences */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-extrabold text-[#0e1e38] uppercase tracking-wider flex items-center gap-2">
-                <Globe className="w-4 h-4 text-[#0e1e38]" />
-                <span>Language &amp; Display</span>
-              </h3>
-
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#0e1e38] mb-1.5">
-                    Platform Language
-                  </label>
-                  <select
-                    value={selectedLanguage}
-                    onChange={(e) => setSelectedLanguage(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-xs text-[#0e1e38] bg-white focus:outline-none"
-                  >
-                    <option value="en">English (Official)</option>
-                    <option value="rw">Ikinyarwanda</option>
-                    <option value="fr">Français</option>
-                  </select>
                 </div>
               </div>
             </div>

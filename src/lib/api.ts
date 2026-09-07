@@ -11,6 +11,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/a
 interface LoginResponse {
   user: {
     id: string;
+    full_name?: string;
     email: string;
     phone?: string;
     role: string;
@@ -121,11 +122,11 @@ class ApiService {
     return data;
   }
 
-  async register(email: string, password: string, phone?: string): Promise<RegisterResponse> {
+  async register(email: string, password: string, fullName: string, phone?: string): Promise<RegisterResponse> {
     return this.request<RegisterResponse>(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, phone }),
+      body: JSON.stringify({ email, password, full_name: fullName, phone }),
     });
   }
 
@@ -171,6 +172,14 @@ class ApiService {
     });
   }
 
+  async resendVerificationEmail(email: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`${API_BASE_URL}/auth/resend-verification-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+  }
+
   async refreshToken(): Promise<RefreshTokenResponse> {
     const refreshToken = localStorage.getItem('refresh_token');
     if (!refreshToken) {
@@ -194,13 +203,13 @@ class ApiService {
     return data;
   }
 
-  async getCurrentUser(): Promise<{ id: string; email: string; role: string }> {
+  async getCurrentUser(): Promise<{ id: string; full_name?: string; email: string; role: string }> {
     const token = this.getToken();
     if (!token) {
       throw new ApiError('Not authenticated', 'AUTH_NOT_AUTHENTICATED');
     }
 
-    const data = await this.request<{ id: string; email: string; role: string }>(
+    const data = await this.request<{ id: string; full_name?: string; email: string; role: string }>(
       `${API_BASE_URL}/auth/me`,
       {
         method: 'GET',

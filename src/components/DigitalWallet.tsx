@@ -18,12 +18,15 @@ import {
 interface DigitalWalletProps {
   onShowQr: (doc: DigitalDocument) => void;
   filterVehicle?: string | null;
+  driverName?: string;
 }
 
 export const DigitalWallet: React.FC<DigitalWalletProps> = ({
   onShowQr,
-  filterVehicle
+  filterVehicle,
+  driverName,
 }) => {
+  const displayName = driverName || mockDriver.fullName;
   const [activeTab, setActiveTab] = useState<'ALL' | 'DRIVER' | 'VEHICLE'>('ALL');
   const [flippedCards, setFlippedCards] = useState<Record<string, boolean>>({});
 
@@ -135,11 +138,11 @@ export const DigitalWallet: React.FC<DigitalWalletProps> = ({
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={mockDriver.photoUrl}
-                            alt={mockDriver.fullName}
+                            alt={displayName}
                             className="w-16 h-16 rounded-xl object-cover border border-slate-200 shadow-sm"
                           />
                           <div className="flex-1 min-w-0 space-y-0.5">
-                            <div className="text-sm font-black text-[#0e1e38] truncate">{mockDriver.fullName}</div>
+                            <div className="text-sm font-black text-[#0e1e38] truncate">{displayName}</div>
                             <div className="text-xs font-mono text-[#0e1e38] font-bold">{doc.documentNumber}</div>
                             <div className="text-[11px] text-slate-500">NID: {mockDriver.nationalId}</div>
                             <div className="text-[11px] text-slate-600">

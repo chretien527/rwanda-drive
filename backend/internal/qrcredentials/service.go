@@ -5,23 +5,25 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/base64"
 	"time"
 
 	"github.com/0xEmmyb2/CipherPass/internal/config"
 	"github.com/0xEmmyb2/CipherPass/pkg/database"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // QRCredentialService handles rotating token issuance and verification
 type QRCredentialService struct {
-	db     *database.PostgresDB
+	db     *database.MongoDB
 	logger config.LoggerInterface
 	cfg    *config.Config
 }
 
 // NewQRCredentialService creates a new QR credential service
-func NewQRCredentialService(db *database.PostgresDB, logger config.LoggerInterface, cfg *config.Config) *QRCredentialService {
+func NewQRCredentialService(db *database.MongoDB, logger config.LoggerInterface, cfg *config.Config) *QRCredentialService {
 	return &QRCredentialService{
 		db:     db,
 		logger: logger,
@@ -39,10 +41,10 @@ type Token struct {
 
 // ActiveToken represents the current active token stored in the database
 type ActiveToken struct {
-	CredentialID string     `json:"credential_id"`
-	Nonce        []byte     `json:"-"`
-	IssuedAt     time.Time  `json:"issued_at"`
-	ConsumedAt   *time.Time `json:"consumed_at,omitempty"`
+	CredentialID string     `json:"credential_id" bson:"credential_id"`
+	Nonce        []byte     `json:"-" bson:"nonce"`
+	IssuedAt     time.Time  `json:"issued_at" bson:"issued_at"`
+	ConsumedAt   *time.Time `json:"consumed_at,omitempty" bson:"consumed_at,omitempty"`
 }
 
 // Error represents an application error
@@ -95,12 +97,10 @@ func (s *QRCredentialService) RefreshToken(ctx context.Context, credentialID str
 	token := base64.RawURLEncoding.EncodeToString(signedPayload)
 
 	// UPSERT: replace the existing active token for this credential
-	_, err = s.db.ExecContext(ctx,
-		`INSERT INTO qr_active_tokens (credential_id, nonce, issued_at, consumed_at)
-		 VALUES ($1, $2, $3, NULL)
-		 ON CONFLICT (credential_id)
-		 DO UPDATE SET nonce = $2, issued_at = $3, consumed_at = NULL`,
-		credentialID, nonce, issuedAt,
+	_, err = s.db.Collection("qr_active_tokens").UpdateOne(ctx,
+		bson.M{"credential_id": credentialID},
+		bson.M{"$set": bson.M{"credential_id": credentialID, "nonce": nonce, "issued_at": issuedAt}, "$unset": bson.M{"consumed_at": ""}},
+		options.Update().SetUpsert(true),
 	)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to upsert QR active token")
@@ -162,14 +162,10 @@ func (s *QRCredentialService) VerifyToken(ctx context.Context, tokenString strin
 	}
 
 	// Step 3: Check nonce matches the currently active token
-	var storedNonce []byte
-	var consumedAt *time.Time
-	err = s.db.QueryRowContext(ctx,
-		`SELECT nonce, consumed_at FROM qr_active_tokens WHERE credential_id = $1`,
-		credentialID,
-	).Scan(&storedNonce, &consumedAt)
+	var active ActiveToken
+	err = s.db.Collection("qr_active_tokens").FindOne(ctx, bson.M{"credential_id": credentialID}).Decode(&active)
 
-	if err == sql.ErrNoRows {
+	if err == mongo.ErrNoDocuments {
 		s.logger.WithField("credential_id", credentialID).Warn("No active token for credential")
 		return nil, ErrTokenNotActive
 	}
@@ -179,31 +175,35 @@ func (s *QRCredentialService) VerifyToken(ctx context.Context, tokenString strin
 	}
 
 	// Step 4: Token not already consumed
-	if consumedAt != nil {
+	if active.ConsumedAt != nil {
 		s.logger.WithField("credential_id", credentialID).Warn("QR token already consumed")
 		return nil, ErrTokenAlreadyUsed
 	}
 
 	// Nonce comparison
-	if len(storedNonce) != len(nonce) {
+	if len(active.Nonce) != len(nonce) {
 		s.logger.WithField("credential_id", credentialID).Warn("QR token nonce length mismatch")
 		return nil, ErrTokenNotActive
 	}
-	for i := range storedNonce {
-		if storedNonce[i] != nonce[i] {
+	for i := range active.Nonce {
+		if active.Nonce[i] != nonce[i] {
 			s.logger.WithField("credential_id", credentialID).Warn("QR token nonce mismatch")
 			return nil, ErrTokenNotActive
 		}
 	}
 
 	// Step 5: Mark nonce as consumed (first successful scan wins)
-	_, err = s.db.ExecContext(ctx,
-		`UPDATE qr_active_tokens SET consumed_at = NOW() WHERE credential_id = $1 AND consumed_at IS NULL`,
-		credentialID,
+	consumedAt := time.Now()
+	result, err := s.db.Collection("qr_active_tokens").UpdateOne(ctx,
+		bson.M{"credential_id": credentialID, "consumed_at": bson.M{"$exists": false}},
+		bson.M{"$set": bson.M{"consumed_at": consumedAt}},
 	)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to consume QR token")
 		return nil, err
+	}
+	if result.MatchedCount == 0 {
+		return nil, ErrTokenAlreadyUsed
 	}
 
 	s.logger.WithField("credential_id", credentialID).Info("QR token verified and consumed")
@@ -218,19 +218,16 @@ func (s *QRCredentialService) VerifyToken(ctx context.Context, tokenString strin
 
 // IsTokenActive checks if a credential currently has an active (unconsumed) token
 func (s *QRCredentialService) IsTokenActive(ctx context.Context, credentialID string) (bool, error) {
-	var consumedAt *time.Time
-	err := s.db.QueryRowContext(ctx,
-		`SELECT consumed_at FROM qr_active_tokens WHERE credential_id = $1`,
-		credentialID,
-	).Scan(&consumedAt)
+	var active ActiveToken
+	err := s.db.Collection("qr_active_tokens").FindOne(ctx, bson.M{"credential_id": credentialID}).Decode(&active)
 
-	if err == sql.ErrNoRows {
+	if err == mongo.ErrNoDocuments {
 		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
-	return consumedAt == nil, nil
+	return active.ConsumedAt == nil, nil
 }
 
 // --- Helper functions ---

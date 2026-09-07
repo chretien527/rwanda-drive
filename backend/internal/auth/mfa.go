@@ -2,12 +2,12 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 	"encoding/base32"
 	"fmt"
 	"strings"
 
 	"github.com/pquerna/otp/totp"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -77,10 +77,7 @@ func (s *Service) ConfirmMFA(ctx context.Context, userID, secret, code string) e
 	}
 
 	// Store the secret and enable MFA
-	_, err = s.db.ExecContext(ctx,
-		`UPDATE users SET mfa_enabled = true, mfa_secret = $1 WHERE id = $2`,
-		secret, userID,
-	)
+	_, err = s.db.Collection("users").UpdateOne(ctx, bson.M{"id": userID}, bson.M{"$set": bson.M{"mfa_enabled": true, "mfa_secret": secret}})
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to enable MFA")
 		return ErrInternal
@@ -92,29 +89,22 @@ func (s *Service) ConfirmMFA(ctx context.Context, userID, secret, code string) e
 
 // ValidateMFACode verifies a TOTP code during login.
 func (s *Service) ValidateMFACode(ctx context.Context, userID, code string) error {
-	var mfaSecret sql.NullString
-	var mfaEnabled bool
-
-	err := s.db.QueryRowContext(ctx,
-		`SELECT mfa_enabled, mfa_secret FROM users WHERE id = $1`,
-		userID,
-	).Scan(&mfaEnabled, &mfaSecret)
-
+	user, err := s.GetUserByID(ctx, userID)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to fetch MFA status")
 		return ErrInternal
 	}
 
-	if !mfaEnabled {
+	if !user.MFAEnabled {
 		return ErrMFANotEnabled
 	}
 
-	if !mfaSecret.Valid {
+	if user.MFASecret == nil || *user.MFASecret == "" {
 		s.logger.WithField("user_id", userID).Error("MFA enabled but no secret stored")
 		return ErrInternal
 	}
 
-	if !totp.Validate(code, mfaSecret.String) {
+	if !totp.Validate(code, *user.MFASecret) {
 		return ErrMFAInvalidCode
 	}
 
@@ -143,10 +133,7 @@ func (s *Service) DisableMFA(ctx context.Context, userID, password, code string)
 	}
 
 	// Disable MFA
-	_, err = s.db.ExecContext(ctx,
-		`UPDATE users SET mfa_enabled = false, mfa_secret = NULL WHERE id = $1`,
-		userID,
-	)
+	_, err = s.db.Collection("users").UpdateOne(ctx, bson.M{"id": userID}, bson.M{"$set": bson.M{"mfa_enabled": false}, "$unset": bson.M{"mfa_secret": ""}})
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to disable MFA")
 		return ErrInternal
@@ -163,18 +150,14 @@ func IsMFARequired(role string) bool {
 
 // GetMFASecret returns the TOTP secret for a user (used during setup confirmation)
 func (s *Service) GetMFASecret(ctx context.Context, userID string) (string, error) {
-	var secret sql.NullString
-	err := s.db.QueryRowContext(ctx,
-		`SELECT mfa_secret FROM users WHERE id = $1`,
-		userID,
-	).Scan(&secret)
+	user, err := s.GetUserByID(ctx, userID)
 	if err != nil {
 		return "", ErrInternal
 	}
-	if !secret.Valid {
+	if user.MFASecret == nil || *user.MFASecret == "" {
 		return "", ErrMFANotEnabled
 	}
-	return secret.String, nil
+	return *user.MFASecret, nil
 }
 
 // GenerateMFABackupCodes generates one-time backup codes for account recovery.

@@ -67,14 +67,13 @@ export default function LoginPage() {
   const handleResendVerification = async () => {
     setResendLoading(true)
     setResendSuccess(false)
+    setVerifyError(null)
 
     try {
-      await apiService.register(identifier, password)
+      await apiService.resendVerificationEmail(identifier)
       setResendSuccess(true)
     } catch (err: any) {
-      setVerifyError(
-        'Could not resend automatically. Check your email for the verification link, or use the token from the server logs.'
-      )
+      setVerifyError(err.message || 'Could not resend verification code. Please try again later.')
     } finally {
       setResendLoading(false)
     }
@@ -96,21 +95,21 @@ export default function LoginPage() {
           Email Verification
         </h1>
         <p className='text-sm text-slate-500 mt-1.5 mb-8'>
-          Enter the verification token sent to{' '}
+          Enter the 6-digit verification code sent to{' '}
           <span className='font-semibold text-[#0e1e38]'>{identifier}</span>
         </p>
 
         <form onSubmit={handleVerifyEmail} className='space-y-5'>
           <div>
             <label className='block text-sm font-medium text-[#0e1e38] mb-1.5'>
-              Verification Token
+              Verification Code
             </label>
             <input
               type='text'
               required
               value={verificationToken}
               onChange={(e) => setVerificationToken(e.target.value)}
-              placeholder='Paste your verification token here'
+              placeholder='Enter your 6-digit code'
               className='w-full px-4 py-3 rounded-lg border border-slate-200 text-sm text-[#0e1e38] placeholder:text-slate-400 focus:outline-none focus:border-[#0e1e38] focus:ring-1 focus:ring-[#0e1e38]/15 transition-colors bg-white font-mono'
             />
           </div>
@@ -129,7 +128,7 @@ export default function LoginPage() {
         </form>
 
         <div className='mt-6 text-center'>
-          <p className='text-sm text-slate-500 mb-2'>Didn&apos;t receive the token?</p>
+          <p className='text-sm text-slate-500 mb-2'>Didn&apos;t receive the code?</p>
           <button
             onClick={handleResendVerification}
             disabled={resendLoading}

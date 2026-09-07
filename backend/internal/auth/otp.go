@@ -3,10 +3,14 @@ package auth
 import (
 	"context"
 	"crypto/rand"
-	"database/sql"
 	"fmt"
 	"math/big"
 	"time"
+
+	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -17,151 +21,110 @@ const (
 	otpResendLimit  = 3
 )
 
-// PhoneOTP represents a phone OTP verification record
 type PhoneOTP struct {
-	ID        string     `json:"id"`
-	UserID    string     `json:"user_id"`
-	Code      string     `json:"-"` // Never expose in JSON
-	Purpose   string     `json:"purpose"`
-	ExpiresAt time.Time  `json:"expires_at"`
-	VerifiedAt *time.Time `json:"verified_at,omitempty"`
-	Attempts  int        `json:"attempts"`
-	CreatedAt time.Time  `json:"created_at"`
+	ID         string     `json:"id" bson:"id"`
+	UserID     string     `json:"user_id" bson:"user_id"`
+	Code       string     `json:"-" bson:"code"`
+	Purpose    string     `json:"purpose" bson:"purpose"`
+	ExpiresAt  time.Time  `json:"expires_at" bson:"expires_at"`
+	VerifiedAt *time.Time `json:"verified_at,omitempty" bson:"verified_at,omitempty"`
+	Attempts   int        `json:"attempts" bson:"attempts"`
+	CreatedAt  time.Time  `json:"created_at" bson:"created_at"`
 }
 
-// GeneratePhoneOTP creates a 6-digit OTP code for the given purpose.
-// Returns the plaintext code (to be sent via SMS) and any error.
 func (s *Service) GeneratePhoneOTP(ctx context.Context, userID, purpose string) (string, error) {
-	// Invalidate any previous unverified OTPs of the same purpose
-	_, err := s.db.ExecContext(ctx,
-		`DELETE FROM phone_otps WHERE user_id = $1 AND purpose = $2 AND verified_at IS NULL`,
-		userID, purpose,
-	)
+	_, err := s.db.Collection("phone_otps").DeleteMany(ctx, bson.M{
+		"user_id": userID, "purpose": purpose, "verified_at": bson.M{"$exists": false},
+	})
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to invalidate old OTPs")
 	}
 
-	// Generate 6-digit code
 	code, err := generateOTPCode()
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to generate OTP code")
 		return "", ErrInternal
 	}
 
-	expiresAt := time.Now().Add(otpTTL)
-
-	_, err = s.db.ExecContext(ctx,
-		`INSERT INTO phone_otps (user_id, code, purpose, expires_at)
-		 VALUES ($1, $2, $3, $4)`,
-		userID, code, purpose, expiresAt,
-	)
+	now := time.Now()
+	_, err = s.db.Collection("phone_otps").InsertOne(ctx, PhoneOTP{
+		ID:        uuid.NewString(),
+		UserID:    userID,
+		Code:      code,
+		Purpose:   purpose,
+		ExpiresAt: now.Add(otpTTL),
+		CreatedAt: now,
+	})
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to store OTP")
 		return "", ErrInternal
 	}
 
-	s.logger.WithFields(map[string]interface{}{
-		"user_id": userID,
-		"purpose": purpose,
-	}).Info("Phone OTP generated")
-
+	s.logger.WithFields(map[string]interface{}{"user_id": userID, "purpose": purpose}).Info("Phone OTP generated")
 	return code, nil
 }
 
-// VerifyPhoneOTP validates an OTP code for the given purpose.
 func (s *Service) VerifyPhoneOTP(ctx context.Context, userID, code, purpose string) error {
-	var otpID string
-	var storedCode string
-	var expiresAt time.Time
-	var verifiedAt sql.NullTime
-	var attempts int
-
-	err := s.db.QueryRowContext(ctx,
-		`SELECT id, code, expires_at, verified_at, attempts
-		 FROM phone_otps
-		 WHERE user_id = $1 AND purpose = $2
-		 ORDER BY created_at DESC LIMIT 1`,
-		userID, purpose,
-	).Scan(&otpID, &storedCode, &expiresAt, &verifiedAt, &attempts)
-
-	if err == sql.ErrNoRows {
+	var otp PhoneOTP
+	err := s.db.Collection("phone_otps").FindOne(ctx,
+		bson.M{"user_id": userID, "purpose": purpose},
+		options.FindOne().SetSort(bson.D{{Key: "created_at", Value: -1}}),
+	).Decode(&otp)
+	if err == mongo.ErrNoDocuments {
 		return ErrOTPNotFound
 	}
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to look up OTP")
 		return ErrInternal
 	}
-
-	if verifiedAt.Valid {
+	if otp.VerifiedAt != nil {
 		return ErrOTPAlreadyVerified
 	}
-
-	if time.Now().After(expiresAt) {
+	if time.Now().After(otp.ExpiresAt) {
 		return ErrOTPExpired
 	}
-
-	if attempts >= otpMaxAttempts {
+	if otp.Attempts >= otpMaxAttempts {
 		return ErrOTPMaxAttempts
 	}
 
-	// Increment attempts
-	_, err = s.db.ExecContext(ctx,
-		`UPDATE phone_otps SET attempts = attempts + 1 WHERE id = $1`,
-		otpID,
-	)
+	_, err = s.db.Collection("phone_otps").UpdateOne(ctx, bson.M{"id": otp.ID}, bson.M{"$inc": bson.M{"attempts": 1}})
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to increment OTP attempts")
 	}
-
-	if storedCode != code {
+	if otp.Code != code {
 		return ErrOTPInvalid
 	}
 
-	// Mark as verified
-	_, err = s.db.ExecContext(ctx,
-		`UPDATE phone_otps SET verified_at = NOW() WHERE id = $1`,
-		otpID,
-	)
+	now := time.Now()
+	_, err = s.db.Collection("phone_otps").UpdateOne(ctx, bson.M{"id": otp.ID}, bson.M{"$set": bson.M{"verified_at": now}})
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to mark OTP as verified")
 		return ErrInternal
 	}
 
-	s.logger.WithFields(map[string]interface{}{
-		"user_id": userID,
-		"purpose": purpose,
-	}).Info("Phone OTP verified")
-
+	s.logger.WithFields(map[string]interface{}{"user_id": userID, "purpose": purpose}).Info("Phone OTP verified")
 	return nil
 }
 
-// CheckPhoneOTPRateLimit checks if the user has exceeded the OTP resend rate limit.
 func (s *Service) CheckPhoneOTPRateLimit(ctx context.Context, userID, purpose string) error {
-	var count int
-	err := s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM phone_otps
-		 WHERE user_id = $1 AND purpose = $2
-		   AND created_at > NOW() - $3::INTERVAL`,
-		userID, purpose, fmt.Sprintf("%d minutes", int(otpResendWindow.Minutes())),
-	).Scan(&count)
+	count, err := s.db.Collection("phone_otps").CountDocuments(ctx, bson.M{
+		"user_id": userID, "purpose": purpose, "created_at": bson.M{"$gt": time.Now().Add(-otpResendWindow)},
+	})
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to count recent OTPs")
 		return ErrInternal
 	}
-
 	if count >= otpResendLimit {
 		return ErrRateLimited
 	}
 	return nil
 }
 
-// generateOTPCode generates a cryptographically random 6-digit code
 func generateOTPCode() (string, error) {
 	max := big.NewInt(999999)
 	n, err := rand.Int(rand.Reader, max)
 	if err != nil {
 		return "", err
 	}
-	// Pad with leading zeros to always be 6 digits
-	return fmt.Sprintf("%06d", n.Int64()), nil
+	return fmt.Sprintf("%0*d", otpLength, n.Int64()), nil
 }

@@ -23,7 +23,7 @@ func main() {
 	logger := config.NewLogger(cfg.Environment)
 
 	// Initialize database connection
-	db, err := database.NewPostgresDB(cfg, logger)
+	db, err := database.NewMongoDB(cfg, logger)
 	if err != nil {
 		logger.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -54,7 +54,7 @@ func main() {
 	}
 
 	// Create the SUPER_ADMIN user
-	user, err := authService.CreateUser(ctx, superAdminEmail, superAdminPhone, superAdminPassword, auth.RoleSuperAdmin)
+	user, err := authService.CreateUser(ctx, "Super Admin", superAdminEmail, superAdminPhone, superAdminPassword, auth.RoleSuperAdmin)
 	if err != nil {
 		logger.Fatalf("Failed to create SUPER_ADMIN: %v", err)
 	}

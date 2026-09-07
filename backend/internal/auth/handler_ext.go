@@ -19,6 +19,29 @@ func (h *AuthHandler) HandleVerifyEmail(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(map[string]string{"message": "email verified successfully"})
 }
 
+func (h *AuthHandler) HandleResendVerificationEmail(w http.ResponseWriter, r *http.Request) {
+	var req resendVerificationEmailRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body", "BAD_REQUEST")
+		return
+	}
+	if req.Email == "" {
+		writeError(w, http.StatusBadRequest, "email is required", "BAD_REQUEST")
+		return
+	}
+	err := h.service.ResendEmailVerificationByEmail(r.Context(), req.Email)
+	if err != nil {
+		code := "INTERNAL_ERROR"
+		if e, ok := err.(Error); ok {
+			code = e.Code
+		}
+		writeError(w, http.StatusTooManyRequests, err.Error(), code)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "if an account with that email exists and is unverified, a verification code has been sent"})
+}
+
 func (h *AuthHandler) HandleResendVerification(w http.ResponseWriter, r *http.Request) {
 	userID := GetUserID(r.Context())
 	if userID == "" { writeError(w, http.StatusUnauthorized, "not authenticated", "AUTH_NOT_AUTHENTICATED"); return }

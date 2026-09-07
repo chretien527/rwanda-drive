@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // EventListener polls for contract events and keeps Postgres in sync with on-chain state.
@@ -109,27 +110,25 @@ func (l *EventListener) handleLicenseIssued(ctx context.Context, vLog types.Log)
 	}
 
 	l.logger.WithFields(map[string]interface{}{
-		"leaf_hash":  common.Bytes2Hash(event.LeafHash[:]).Hex(),
+		"leaf_hash":  common.BytesToHash(event.LeafHash[:]).Hex(),
 		"leaf_index": event.LeafIndex.String(),
-		"new_root":   common.Bytes2Hash(event.NewRoot[:]).Hex(),
+		"new_root":   common.BytesToHash(event.NewRoot[:]).Hex(),
 		"block":      vLog.BlockNumber,
 	}).Info("LicenseIssued event received")
 
-	// Update the Postgres record with on-chain confirmation
-	result, err := l.service.db.ExecContext(ctx,
-		`UPDATE license_leaves
-		 SET leaf_index = $1, on_chain_root = $2, synced_at = NOW()
-		 WHERE keccak256_leaf = $3 AND synced_at IS NULL`,
-		event.LeafIndex.Int64(), event.NewRoot[:], event.LeafHash[:],
+	// Update the database record with on-chain confirmation
+	now := time.Now()
+	res, err := l.service.db.Collection("license_leaves").UpdateOne(ctx,
+		bson.M{"keccak256_leaf": event.LeafHash[:], "synced_at": nil},
+		bson.M{"$set": bson.M{"leaf_index": event.LeafIndex.Int64(), "on_chain_root": event.NewRoot[:], "synced_at": now}},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update license leaf: %w", err)
 	}
 
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
-		l.logger.WithField("leaf_hash", common.Bytes2Hash(event.LeafHash[:]).Hex()).
-			Warn("No matching Postgres record for LicenseIssued event")
+	if res.MatchedCount == 0 {
+		l.logger.WithField("leaf_hash", common.BytesToHash(event.LeafHash[:]).Hex()).
+			Warn("No matching record for LicenseIssued event")
 	}
 
 	return nil

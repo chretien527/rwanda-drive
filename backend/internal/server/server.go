@@ -51,11 +51,12 @@ func NewServer(cfg *config.Config, logger *config.Logger) (*Server, error) {
 
 // setupMiddleware applies the middleware chain
 func (s *Server) setupMiddleware() {
-	// Apply middleware in order: Request ID → Logging → Recovery → CORS → Security Headers
+	// Apply middleware in order: CORS first (before routing) → Request ID → Logging → Recovery → Security Headers
+	// CORS must be first to handle OPTIONS preflight requests before the router rejects them
+	s.Router.Use(corsMiddleware)
 	s.Router.Use(requestIDMiddleware)
 	s.Router.Use(loggingMiddleware(s.Logger))
 	s.Router.Use(recoveryMiddleware(s.Logger))
-	s.Router.Use(corsMiddleware)
 	s.Router.Use(securityHeadersMiddleware)
 }
 
@@ -63,6 +64,13 @@ func (s *Server) setupMiddleware() {
 func (s *Server) setupRoutes() {
 	// Health check endpoint (no auth required)
 	s.Router.HandleFunc("/healthz", s.healthCheckHandler).Methods("GET")
+
+	// Global OPTIONS handler for CORS preflight requests
+	// This catches all OPTIONS requests before specific route handlers
+	s.Router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// CORS middleware already set headers, just return 204
+		w.WriteHeader(http.StatusNoContent)
+	})
 
 	// All API routes are under /api/v1
 	// Auth and QR routes are registered by their respective handlers
