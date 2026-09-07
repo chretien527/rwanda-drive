@@ -1,194 +1,145 @@
-# Rwanda Drive - Full Stack Application
+# Rwanda Drive
 
-This is a full-stack application for Rwanda's digital driving credentials platform, featuring a Go backend and Next.js frontend.
+Rwanda Drive is a full-stack digital driving credentials platform with three local services:
 
-## Project Structure
+| Service | Port | Purpose |
+| --- | ---: | --- |
+| MongoDB | `27017` | Application database |
+| Go API | `8080` | Backend HTTP API |
+| Next.js | `3000` | Web frontend |
 
+## Prerequisites
+
+Install the following before starting:
+
+- Docker Desktop, for the easiest setup
+- Go 1.23 or later, for running the API locally
+- Node.js 18 or later and npm, for running the frontend locally
+
+The commands below use PowerShell on Windows. Bash users can use the same commands after changing the directory path format.
+
+## Option 1: Run Each Service in Its Own Terminal
+
+Open three terminal windows. From the repository root, run the following commands.
+
+### Terminal 1: MongoDB
+
+```powershell
+cd C:\Users\Chris\Desktop\Projects\rwanda-drive\rwanda-drive
+docker compose -f docker-compose-simple.yml up -d
+docker compose -f docker-compose-simple.yml ps
 ```
-.
-├── backend/                     # Go backend service
-│   ├── cmd/api/main.go          # Application entry point
-│   ├── internal/                # Private application logic
-│   │   ├── auth/                # Authentication service
-│   │   ├── chain/               # Blockchain operations
-│   │   ├── config/              # Configuration and logging
-│   │   ├── qrcredentials/       # QR code handling
-│   │   ├── server/              # HTTP server setup
-│   │   └── vehicle/             # Vehicle management (new)
-│   ├── pkg/                     # Public libraries
-│   │   └── database/            # Database abstraction
-│   ├── migrations/              # Database migrations
-│   ├── contracts/               # Smart contracts (Solidity)
-│   └── go.mod                   # Go module definition
-├── src/                         # Next.js frontend
-│   ├── app/                     # App router pages
-│   ├── components/              # React components
-│   └── lib/                     # Utilities and types
-├── public/                      # Static assets
-└── ...
+
+This starts MongoDB on `mongodb://localhost:27017` and keeps it running in the background.
+
+### Terminal 2: Go API
+
+```powershell
+cd C:\Users\Chris\Desktop\Projects\rwanda-drive\rwanda-drive\backend
+go mod download
+go run .\cmd\api
 ```
 
-## Getting Started
+The API starts on `http://localhost:8080`. Keep this terminal open. Stop it with `Ctrl+C`.
 
-### Prerequisites
+Before the first run, ensure `backend\.env` exists. To create a local configuration from the template:
 
-- Go 1.22 or later
-- Node.js 18+ and npm/yarn/pnpm/bun
-- PostgreSQL 12 or later
-- [golang-migrate](https://github.com/golang-migrate/migrate) (for migrations)
+```powershell
+cd C:\Users\Chris\Desktop\Projects\rwanda-drive\rwanda-drive
+Copy-Item backend\.env.example backend\.env
+```
 
-### Installation
+The template uses the local MongoDB container. If `backend\.env` already exists, check that it has:
 
-1. Clone the repository
-2. Copy `.env.example` to `.env` and adjust values as needed (see backend/.env.example if exists)
-3. Install Go dependencies:
-   ```bash
-   cd backend
-   go mod download
-   ```
-4. Install frontend dependencies:
-   ```bash
-   cd ../
-   npm install
-   # or
-   yarn install
-   # or
-   pnpm install
-   # or
-   bun install
-   ```
-5. Set up the database:
-   ```bash
-   # Create the database
-   createdb cipherpass
-   
-   # Run migrations
-   migrate -path ./backend/migrations -database "postgres://postgres:postgres@localhost:5432/cipherpass?sslmode=disable" up
-   ```
-6. Start the development servers:
-   ```bash
-   # In one terminal - start backend
-   cd backend
-   go run ./cmd/api
-   
-   # In another terminal - start frontend
-   npm run dev
-   # or
-   yarn dev
-   # or
-   pnpm dev
-   # or
-   bun dev
-   ```
+```text
+MONGODB_URI=mongodb://localhost:27017
+MONGODB_DATABASE=rwanda_drive
+```
 
-### API Endpoints
+### Terminal 3: Next.js Frontend
 
-- `GET /healthz` - Health check endpoint
-- `POST /api/v1/auth/register` - Register new user
-- `POST /api/v1/auth/login` - Login user
-- `POST /api/v1/auth/refresh` - Refresh access token
-- `POST /api/v1/qr/refresh` - Refresh QR token (Driver only)
-- `POST /api/v1/verification/scan` - Verify QR token (Officer/Admin only)
-- `POST /api/v1/vehicles` - Add new vehicle (Driver only)
-- `GET /api/v1/vehicles` - Get user's vehicles (Driver only)
-- `/api/v1/auth/*` - Other auth endpoints (MFA, password reset, etc.)
+```powershell
+cd C:\Users\Chris\Desktop\Projects\rwanda-drive\rwanda-drive
+npm install
+$env:NEXT_PUBLIC_API_URL = "http://localhost:8080/api/v1"
+npm run dev
+```
 
-### Configuration
+Open the application at <http://localhost:3000>.
 
-Configuration is loaded from environment variables. See backend/.env.example for all available options.
+## Option 2: Start All Three with Docker Compose
 
-#### Key Environment Variables
+From the repository root:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ENVIRONMENT` | Deployment environment (development/staging/production) | `development` |
-| `SERVER_ADDRESS` | HTTP server address | `:8080` |
-| `DB_HOST` | PostgreSQL host | `localhost` |
-| `DB_PORT` | PostgreSQL port | `5432` |
-| `DB_USER` | PostgreSQL user | `postgres` |
-| `DB_PASSWORD` | PostgreSQL password | `postgres` |
-| `DB_NAME` | PostgreSQL database name | `cipherpass` |
-| `LOG_LEVEL` | Log level (debug/info/warn/error/fatal) | `info` |
-| `NEXT_PUBLIC_API_URL` | Frontend API URL | `http://localhost:8080` |
+```powershell
+cd C:\Users\Chris\Desktop\Projects\rwanda-drive\rwanda-drive
+docker compose up -d --build
+docker compose ps
+```
 
-## Development
+Open <http://localhost:3000>. View all service logs with:
 
-### Running Tests
+```powershell
+docker compose logs -f
+```
 
-Backend:
-```bash
+View one service only:
+
+```powershell
+docker compose logs -f mongodb
+docker compose logs -f api
+docker compose logs -f frontend
+```
+
+## Stop Services
+
+For the manual setup, press `Ctrl+C` in the API and frontend terminals, then stop MongoDB:
+
+```powershell
+docker compose -f docker-compose-simple.yml down
+```
+
+For the Docker Compose setup:
+
+```powershell
+docker compose down
+```
+
+To stop and remove the MongoDB data volume as well:
+
+```powershell
+docker compose down -v
+```
+
+## Verify the Services
+
+```powershell
+Test-NetConnection localhost -Port 27017
+Test-NetConnection localhost -Port 8080
+Test-NetConnection localhost -Port 3000
+```
+
+The API health endpoint is available at <http://localhost:8080/healthz>.
+
+## Development Commands
+
+Run backend tests:
+
+```powershell
 cd backend
 go test ./...
 ```
 
-Frontend:
-```bash
-npm test
-# or
-yarn test
-# or
-pnpm test
-# or
-bun test
-```
+Run frontend linting:
 
-### Linting
-
-Backend:
-```bash
-cd backend
-golangci-lint run
-```
-
-Frontend:
-```bash
+```powershell
 npm run lint
-# or
-yarn lint
-# or
-pnpm lint
-# or
-bun run lint
 ```
 
-## Features
+## Repository Layout
 
-- **Authentication**: Secure JWT-based auth with optional MFA
-- **QR Credentials**: Dynamic, rotating QR codes for secure verification
-- **Blockchain Integration**: On-chain verification of licenses and credentials
-- **Vehicle Management**: Register and link vehicles to digital wallet
-- **Role-Based Access**: Driver, Officer, Admin, and Super Admin roles
-- **Real-time Verification**: Instant police verification via QR scanning
-- **Offline Support**: Cached credentials for use without connectivity
-
-## Database Migrations
-
-We use [golang-migrate](https://github.com/golang-migrate/migrate) for managing database migrations.
-
-To create a new migration:
-```bash
-migrate create -ext sql -dir ./backend/migrations -seq add_some_feature
-```
-
-This will create two files:
-- `xxxxxx_add_some_feature.up.sql`
-- `xxxxxx_add_some_feature.down.sql`
-
-## Deployment
-
-### Backend (Go)
-The backend can be deployed anywhere that supports Go applications:
-- Docker containers
-- Traditional VMs
-- Cloud platforms (AWS, GCP, Azure, etc.)
-
-### Frontend (Next.js)
-The frontend can be deployed to:
-- Vercel (recommended for Next.js)
-- Netlify
-- AWS Amplify
-- Traditional hosting with Node.js support
-
-## License
-
-MIT
+- `backend/` - Go API and MongoDB integration
+- `src/` - Next.js application and React components
+- `public/` - Static frontend assets
+- `contracts/` - Solidity smart contracts
+- `zk/` - Zero-knowledge proof components
